@@ -49,8 +49,21 @@ def get_student(
 def create_student(
     body: StudentCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role(UserRole.it_admin, UserRole.principal, UserRole.teacher)),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.role == UserRole.district_admin:
+        raise HTTPException(status_code=403, detail="District admins cannot create students")
+    if current_user.role == UserRole.principal:
+        if body.school_id != current_user.school_id:
+            raise HTTPException(status_code=403, detail="Cannot create student outside your school")
+    if current_user.role == UserRole.teacher:
+        # teacher may only create students in their own assigned classes
+        if body.class_id is not None:
+            cls = db.query(Class).filter(Class.id == body.class_id, Class.teacher_id == current_user.id).first()
+            if not cls:
+                raise HTTPException(status_code=403, detail="Cannot create student in a class you do not teach")
+        else:
+            raise HTTPException(status_code=403, detail="Teachers must assign a class when creating a student")
     student = Student(**body.model_dump())
     db.add(student)
     db.commit()
