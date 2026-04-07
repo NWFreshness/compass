@@ -2,13 +2,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.db import get_db
 from app.models import Base
 
 TEST_DB_URL = "sqlite:///:memory:"
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
-TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSession = sessionmaker(autocommit=False, autoflush=False)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -20,11 +25,13 @@ def setup_db():
 
 @pytest.fixture(scope="function")
 def db():
-    with engine.connect() as connection:
-        with connection.begin() as transaction:
-            session = TestingSession(bind=connection)
-            yield session
-            transaction.rollback()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSession(bind=connection)
+    yield session
+    session.close()
+    transaction.rollback()
+    connection.close()
 
 
 @pytest.fixture(scope="function")

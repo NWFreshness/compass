@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./compass.db"
     session_expiry_hours: int = 24
-    cookie_secure: bool = False
+    cookie_secure: bool = False  # Set True in production when serving over HTTPS
 
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"

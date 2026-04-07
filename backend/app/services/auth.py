@@ -31,7 +31,12 @@ def get_session(db: Session, session_id: str) -> UserSession | None:
     except ValueError:
         return None
     session = db.query(UserSession).filter(UserSession.id == sid).first()
-    if session and session.expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc):
+    if not session:
+        return None
+    expires = session.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires > datetime.now(timezone.utc):
         return session
     return None
 

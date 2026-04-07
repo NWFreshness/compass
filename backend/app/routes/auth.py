@@ -30,7 +30,12 @@ def login(body: LoginRequest, response: Response, db: Session = Depends(get_db))
 def logout(response: Response, session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if session_id:
         delete_session(db, session_id)
-    response.delete_cookie("session_id")
+    response.delete_cookie(
+        key="session_id",
+        httponly=True,
+        samesite="lax",
+        secure=settings.cookie_secure,
+    )
     return {"ok": True}
 
 
