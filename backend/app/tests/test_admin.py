@@ -39,15 +39,15 @@ def test_list_users_as_teacher_forbidden(client, db):
 
 def test_create_user(client, db):
     c = admin_client(client, db)
-    res = c.post("/api/admin/users", json={"username": "newuser", "password": "pass123", "role": "teacher"})
+    res = c.post("/api/admin/users", json={"username": "newuser", "password": "pass1234", "role": "teacher"})
     assert res.status_code == 201
     assert res.json()["username"] == "newuser"
 
 
 def test_create_duplicate_user(client, db):
     c = admin_client(client, db)
-    c.post("/api/admin/users", json={"username": "dup", "password": "pass", "role": "teacher"})
-    res = c.post("/api/admin/users", json={"username": "dup", "password": "pass", "role": "teacher"})
+    c.post("/api/admin/users", json={"username": "dup", "password": "password1", "role": "teacher"})
+    res = c.post("/api/admin/users", json={"username": "dup", "password": "password1", "role": "teacher"})
     assert res.status_code == 409
 
 
@@ -66,7 +66,7 @@ def test_create_subject(client, db):
 
 def test_delete_user(client, db):
     c = admin_client(client, db)
-    r = c.post("/api/admin/users", json={"username": "todel", "password": "x", "role": "teacher"})
+    r = c.post("/api/admin/users", json={"username": "todel", "password": "password1", "role": "teacher"})
     uid = r.json()["id"]
     res = c.delete(f"/api/admin/users/{uid}")
     assert res.status_code == 204

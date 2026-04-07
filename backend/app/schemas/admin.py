@@ -1,19 +1,19 @@
 import uuid
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.models import UserRole
 
 
 class UserCreate(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=8)
     role: UserRole
     school_id: Optional[uuid.UUID] = None
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    password: Optional[str] = Field(default=None, min_length=8)
     role: Optional[UserRole] = None
     school_id: Optional[uuid.UUID] = None
 

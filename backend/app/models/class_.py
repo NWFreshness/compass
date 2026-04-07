@@ -12,7 +12,7 @@ class Class(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     grade_level: Mapped[int] = mapped_column(Integer, nullable=False)
     school_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("schools.id"), nullable=False)
-    teacher_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    teacher_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     school: Mapped["School"] = relationship("School", back_populates="classes")
     teacher: Mapped[Optional["User"]] = relationship("User", back_populates="taught_classes")

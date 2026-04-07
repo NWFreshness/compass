@@ -58,6 +58,8 @@ def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    # Null out teacher assignment on any classes this user teaches
+    db.query(Class).filter(Class.teacher_id == user_id).update({"teacher_id": None})
     db.delete(user)
     db.commit()
 
