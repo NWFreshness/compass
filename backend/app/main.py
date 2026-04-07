@@ -3,11 +3,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from app.routes.auth import router as auth_router
 from app.routes.admin import router as admin_router
+from app.routes.students import router as students_router
 
 app = FastAPI(title="Compass API")
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(students_router)
 
 
 @app.exception_handler(IntegrityError)
