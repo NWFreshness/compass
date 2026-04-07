@@ -38,16 +38,27 @@ def test_create_single_score(client, db):
 def test_get_scores_for_student(client, db):
     w = seed_score_world(db)
     assert client.post("/api/auth/login", json={"username": "teacher", "password": "password1"}).status_code == 200
+    # Insert two scores with different dates to verify ordering
     client.post("/api/scores", json={
         "student_id": str(w["student"].id),
         "subject_id": str(w["subject"].id),
         "score_type": "test",
         "value": 90.0,
+        "date": "2026-03-01",
+    })
+    client.post("/api/scores", json={
+        "student_id": str(w["student"].id),
+        "subject_id": str(w["subject"].id),
+        "score_type": "quiz",
+        "value": 75.0,
         "date": "2026-03-15",
     })
     res = client.get(f"/api/scores/student/{w['student'].id}")
     assert res.status_code == 200
-    assert len(res.json()) >= 1
+    scores = res.json()
+    assert len(scores) == 2
+    # Most recent date should come first (ordered by date desc)
+    assert scores[0]["date"] > scores[1]["date"]
 
 
 def test_csv_import_valid(client, db):

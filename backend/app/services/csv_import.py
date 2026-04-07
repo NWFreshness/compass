@@ -38,10 +38,12 @@ def parse_and_validate_csv(db: Session, file_bytes: bytes) -> CSVImportResult:
         value = None
         try:
             value = float(row["value"])
-            if not (0 <= value <= 100):
-                raise ValueError
         except ValueError:
-            row_errors.append(f"Invalid value '{row['value']}' (must be 0-100)")
+            row_errors.append(f"Invalid value '{row['value']}' (must be a number)")
+        else:
+            if not (0 <= value <= 100):
+                row_errors.append(f"Value '{row['value']}' out of range (must be 0-100)")
+                value = None
 
         score_date = None
         try:
