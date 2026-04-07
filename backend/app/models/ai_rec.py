@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import DateTime, ForeignKey, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,6 +15,8 @@ class AIRec(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     response: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     student: Mapped[Optional["Student"]] = relationship("Student", back_populates="ai_recs")
+    creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
+    class_: Mapped[Optional["Class"]] = relationship("Class", back_populates="ai_recs")

@@ -19,7 +19,7 @@ class Intervention(Base):
     student_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("students.id"), nullable=False)
     teacher_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
     strategy: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     outcome_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[InterventionStatus] = mapped_column(Enum(InterventionStatus), default=InterventionStatus.active, nullable=False)

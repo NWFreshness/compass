@@ -25,4 +25,4 @@ class Score(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     student: Mapped["Student"] = relationship("Student", back_populates="scores")
-    subject: Mapped["Subject"] = relationship("Subject")
+    subject: Mapped["Subject"] = relationship("Subject", back_populates="scores")
