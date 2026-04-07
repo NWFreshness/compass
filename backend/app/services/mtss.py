@@ -20,7 +20,7 @@ def calculate_tier(avg_score: float, tier1_min: float = 80.0, tier2_min: float =
 def get_student_tier(db: Session, student_id, subject_id=None) -> TierResult | None:
     """Compute MTSS tier for a student, optionally filtered by subject."""
     query = db.query(Score).filter(Score.student_id == student_id)
-    if subject_id:
+    if subject_id is not None:
         query = query.filter(Score.subject_id == subject_id)
     scores = query.all()
     if not scores:
@@ -29,7 +29,7 @@ def get_student_tier(db: Session, student_id, subject_id=None) -> TierResult | N
 
     student = db.query(Student).filter(Student.id == student_id).first()
     benchmark = None
-    if student and subject_id:
+    if student and subject_id is not None:
         benchmark = (
             db.query(Benchmark)
             .filter(Benchmark.grade_level == student.grade_level, Benchmark.subject_id == subject_id)
