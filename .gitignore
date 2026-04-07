@@ -1,1 +1,7 @@
 .worktrees/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+backend/compass.db
+backend/.env
