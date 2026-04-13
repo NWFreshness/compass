@@ -94,7 +94,7 @@ def upgrade() -> None:
     )
     op.create_table('ai_recs',
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('target_type', sa.Enum('student', 'class', name='aitargettype', native_enum=False), nullable=False),
+    sa.Column('target_type', sa.Enum('student', 'class', name='aitargettype', native_enum=False, create_constraint=True), nullable=False),
     sa.Column('student_id', sa.Uuid(), nullable=True),
     sa.Column('class_id', sa.Uuid(), nullable=True),
     sa.Column('created_by', sa.Uuid(), nullable=False),

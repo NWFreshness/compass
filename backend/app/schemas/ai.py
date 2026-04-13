@@ -10,6 +10,7 @@ class AIRecommendationResponse(BaseModel):
     target_type: Literal["student", "class"]
     student_id: Optional[uuid.UUID]
     class_id: Optional[uuid.UUID]
+    created_by: uuid.UUID
     model_name: str
     temperature: float
     prompt: str

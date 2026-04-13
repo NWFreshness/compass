@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
@@ -68,6 +69,7 @@ def test_ai_recommendation_response_serializes_class_target(db):
 
     assert payload.target_type == "class"
     assert payload.class_id == world["class"].id
+    assert payload.created_by == world["teacher"].id
     assert payload.snapshot["recommended_tier"] == "tier2"
     assert payload.model_name == "llama3.2"
 
@@ -97,6 +99,7 @@ def test_ai_recommendation_response_serializes_student_target(db):
 
     assert payload.target_type == "student"
     assert payload.student_id == world["student"].id
+    assert payload.created_by == world["teacher"].id
     assert payload.model_name == "llama3.2"
 
 
@@ -150,3 +153,11 @@ def test_ai_recommendation_rejects_both_targets_populated(db):
         db.add(rec)
         with pytest.raises(IntegrityError):
             db.flush()
+
+
+def test_ai_migration_enforces_target_type_enum_constraint():
+    migration_path = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "ccb6db26e00c_initial_schema.py"
+    source = migration_path.read_text(encoding="utf-8")
+
+    assert "sa.Column('target_type', sa.Enum('student', 'class', name='aitargettype', native_enum=False, create_constraint=True), nullable=False)" in source
+    assert "create_constraint=True" in source
