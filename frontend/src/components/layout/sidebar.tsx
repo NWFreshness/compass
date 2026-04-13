@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart2, Upload, Settings, LogOut, School } from "lucide-react";
+import { Users, BarChart2, Upload, Settings, LogOut, School, LayoutDashboard } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -14,6 +14,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["it_admin", "district_admin", "principal", "teacher"] },
   { href: "/students", label: "Students", icon: Users, roles: ["it_admin", "district_admin", "principal", "teacher"] },
   { href: "/scores/entry", label: "Enter Scores", icon: BarChart2, roles: ["it_admin", "principal", "teacher"] },
   { href: "/scores/import", label: "Import Scores", icon: Upload, roles: ["it_admin", "principal", "teacher"] },
