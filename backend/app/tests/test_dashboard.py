@@ -105,3 +105,34 @@ def test_school_summary_not_high_risk(db):
 
     summary = get_school_summary(db, school.id)
     assert summary["high_risk"] is False
+
+
+def test_school_summary_avg_score_weighted(db):
+    """avg_score must be per-student mean, not average-of-class-averages."""
+    school, subject, teacher, cls = seed_base(db)
+    # second class with 1 student
+    cls2 = Class(name="Grade 3B", grade_level=3, school_id=school.id, teacher_id=teacher.id)
+    db.add(cls2)
+    db.flush()
+    # cls: 2 students averaging 90 and 60 → per-student avgs [90, 60]
+    make_student_with_scores(db, "Alice", "S001", 3, school.id, cls.id, subject.id, [90])
+    make_student_with_scores(db, "Bob", "S002", 3, school.id, cls.id, subject.id, [60])
+    # cls2: 1 student averaging 90
+    make_student_with_scores(db, "Carol", "S003", 3, school.id, cls2.id, subject.id, [90])
+    db.commit()
+    # true per-student avg: (90 + 60 + 90) / 3 = 80.0
+    # wrong average-of-averages: (75 + 90) / 2 = 82.5
+    summary = get_school_summary(db, school.id)
+    assert summary["avg_score"] == pytest.approx(80.0, abs=0.1)
+
+
+def test_grade_averages_sorted(db):
+    school, subject, teacher, cls = seed_base(db)
+    cls5 = Class(name="Grade 5A", grade_level=5, school_id=school.id, teacher_id=teacher.id)
+    db.add(cls5)
+    db.flush()
+    make_student_with_scores(db, "Alice", "S001", 5, school.id, cls5.id, subject.id, [80])
+    make_student_with_scores(db, "Bob", "S002", 3, school.id, cls.id, subject.id, [70])
+    db.commit()
+    avgs = get_grade_averages(db, school.id)
+    assert [a["grade_level"] for a in avgs] == [3, 5]
