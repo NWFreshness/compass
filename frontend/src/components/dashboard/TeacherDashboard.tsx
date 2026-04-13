@@ -87,7 +87,13 @@ export function TeacherDashboard({ data }: TeacherDashboardProps) {
                   {at_risk.map((student) => (
                     <TableRow
                       key={student.student_id}
-                      className={student.tier === "tier3" ? "bg-red-50" : "bg-yellow-50"}
+                      className={
+                        student.tier === "tier3"
+                          ? "bg-red-50"
+                          : student.tier === "tier2"
+                          ? "bg-yellow-50"
+                          : undefined
+                      }
                     >
                       <TableCell className="font-medium">
                         <Link href={`/students/${student.student_id}`} className="hover:underline">
