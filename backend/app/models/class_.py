@@ -18,3 +18,4 @@ class Class(Base):
     teacher: Mapped[Optional["User"]] = relationship("User", back_populates="taught_classes")
     students: Mapped[list["Student"]] = relationship("Student", back_populates="class_")
     ai_recs: Mapped[list["AIRec"]] = relationship("AIRec", back_populates="class_")
+    interventions: Mapped[list["Intervention"]] = relationship("Intervention", back_populates="class_")

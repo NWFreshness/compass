@@ -69,6 +69,20 @@ export interface AIRecommendation {
   created_at: string;
 }
 
+export type InterventionStatus = "active" | "resolved";
+
+export interface Intervention {
+  id: string;
+  student_id: string | null;
+  class_id: string | null;
+  teacher_id: string;
+  strategy: string;
+  description: string | null;
+  start_date: string;
+  outcome_notes: string | null;
+  status: InterventionStatus;
+}
+
 export interface CSVRowError {
   row: number;
   message: string;
