@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { ClassInterventionPanel } from "@/components/interventions/ClassInterventionPanel";
 import { TierBadge } from "@/components/dashboard/TierBadge";
 import { TierDonut } from "@/components/dashboard/TierDonut";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +92,22 @@ export function PrincipalDashboard({ data }: PrincipalDashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {classes.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">Class Supports</h2>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {classes.map((cls) => (
+              <ClassInterventionPanel
+                key={cls.id}
+                classId={cls.id}
+                className={cls.name}
+                gradeLevel={cls.grade_level}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* At-Risk Students panel */}
       {at_risk.length > 0 && (

@@ -14,7 +14,7 @@ interface Props {
 }
 
 function canEdit(role: UserRole) {
-  return role !== "district_admin";
+  return role === "teacher" || role === "principal" || role === "district_admin" || role === "it_admin";
 }
 
 export function InterventionList({ interventions, userRole, onUpdated }: Props) {

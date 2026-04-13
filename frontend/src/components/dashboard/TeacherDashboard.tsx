@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { ClassInterventionPanel } from "@/components/interventions/ClassInterventionPanel";
 import { TierBadge } from "@/components/dashboard/TierBadge";
 import { TierDonut } from "@/components/dashboard/TierDonut";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ export function TeacherDashboard({ data }: TeacherDashboardProps) {
     <div className="space-y-6 p-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {classes.map((cls) => (
-          <Card key={cls.id}>
+            <Card key={cls.id}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{cls.name}</CardTitle>
               <p className="text-sm text-slate-500">Grade {cls.grade_level}</p>
@@ -64,6 +65,12 @@ export function TeacherDashboard({ data }: TeacherDashboardProps) {
                   <TierBadge tier="tier3" />
                 </span>
               </div>
+              <ClassInterventionPanel
+                classId={cls.id}
+                className={cls.name}
+                gradeLevel={cls.grade_level}
+                compact
+              />
             </CardContent>
           </Card>
         ))}

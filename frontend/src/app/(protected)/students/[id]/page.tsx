@@ -7,38 +7,55 @@ import { useEffect, useMemo, useState } from "react";
 import { AnalysisCard } from "@/components/ai/AnalysisCard";
 import { AnalysisHistory } from "@/components/ai/AnalysisHistory";
 import { AnalyzeButton } from "@/components/ai/AnalyzeButton";
+import { InterventionForm } from "@/components/interventions/InterventionForm";
+import { InterventionList } from "@/components/interventions/InterventionList";
 import { Header } from "@/components/layout/header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/api";
-import type { AIRecommendation, Score, Student, Subject } from "@/lib/types";
+import { useAuth } from "@/lib/auth";
+import type { AIRecommendation, Intervention, Score, Student, Subject } from "@/lib/types";
+
+function sortInterventions(items: Intervention[]) {
+  return [...items].sort((a, b) => {
+    if (a.status !== b.status) {
+      return a.status.localeCompare(b.status);
+    }
+    return b.start_date.localeCompare(a.start_date);
+  });
+}
 
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
+  const { user, loading: authLoading } = useAuth();
   const [student, setStudent] = useState<Student | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [history, setHistory] = useState<AIRecommendation[]>([]);
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
+  const [showInterventionForm, setShowInterventionForm] = useState(false);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       setError("");
       try {
-        const [studentData, scoreData, subjectData, aiHistory] = await Promise.all([
+        const [studentData, scoreData, subjectData, aiHistory, interventionData] = await Promise.all([
           api.get<Student>(`/students/${params.id}`),
           api.get<Score[]>(`/scores/student/${params.id}`),
           api.get<Subject[]>("/lookups/subjects"),
           api.get<AIRecommendation[]>(`/ai/student/${params.id}/history`),
+          api.get<Intervention[]>(`/interventions?student_id=${params.id}`),
         ]);
         setStudent(studentData);
         setScores(scoreData);
         setSubjects(subjectData);
         setHistory(aiHistory);
+        setInterventions(sortInterventions(interventionData));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unable to load student profile");
       } finally {
@@ -60,6 +77,17 @@ export default function StudentDetailPage() {
     } finally {
       setAnalyzing(false);
     }
+  }
+
+  function handleInterventionCreated(intervention: Intervention) {
+    setInterventions((current) => sortInterventions([intervention, ...current]));
+    setShowInterventionForm(false);
+  }
+
+  function handleInterventionUpdated(updated: Intervention) {
+    setInterventions((current) =>
+      sortInterventions(current.map((intervention) => (intervention.id === updated.id ? updated : intervention)))
+    );
   }
 
   const subjectNames = useMemo(
@@ -156,6 +184,48 @@ export default function StudentDetailPage() {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="space-y-4 p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Interventions</p>
+                    <p className="text-sm text-slate-500">
+                      Track active supports and resolution notes for this student.
+                    </p>
+                  </div>
+                  {!authLoading && user ? (
+                    <button
+                      type="button"
+                      className={buttonVariants({ variant: showInterventionForm ? "outline" : "default" })}
+                      onClick={() => setShowInterventionForm((current) => !current)}
+                    >
+                      {showInterventionForm ? "Cancel" : "Add Intervention"}
+                    </button>
+                  ) : null}
+                </div>
+
+                {showInterventionForm && user ? (
+                  <div className="rounded-lg border border-slate-200 p-4">
+                    <InterventionForm
+                      target={{ type: "student", id: params.id }}
+                      onCreated={handleInterventionCreated}
+                      onCancel={() => setShowInterventionForm(false)}
+                    />
+                  </div>
+                ) : null}
+
+                {user ? (
+                  <InterventionList
+                    interventions={interventions}
+                    userRole={user.role}
+                    onUpdated={handleInterventionUpdated}
+                  />
+                ) : (
+                  <p className="text-sm text-slate-500">Loading intervention permissions...</p>
                 )}
               </CardContent>
             </Card>
