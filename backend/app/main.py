@@ -7,6 +7,7 @@ from app.routes.admin import router as admin_router
 from app.routes.lookups import router as lookups_router
 from app.routes.students import router as students_router
 from app.routes.scores import router as scores_router
+from app.routes.dashboard import router as dashboard_router
 
 app = FastAPI(title="Compass API")
 
@@ -15,6 +16,7 @@ app.include_router(admin_router)
 app.include_router(lookups_router)
 app.include_router(students_router)
 app.include_router(scores_router)
+app.include_router(dashboard_router)
 app.include_router(ai_router)
 
 

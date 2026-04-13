@@ -1,71 +1,118 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 
-import { AnalysisCard } from "@/components/ai/AnalysisCard";
-import { AnalyzeButton } from "@/components/ai/AnalyzeButton";
+import { TierBadge } from "@/components/dashboard/TierBadge";
+import { TierDonut } from "@/components/dashboard/TierDonut";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
-import type { AIRecommendation, Class } from "@/lib/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { TeacherDashboard as TeacherDashboardData } from "@/lib/types";
 
-export function TeacherDashboard({ classes }: { classes: Class[] }) {
-  const [classHistory, setClassHistory] = useState<Record<string, AIRecommendation[]>>({});
-  const [loadingClassId, setLoadingClassId] = useState<string | null>(null);
-  const [errorClassId, setErrorClassId] = useState<string | null>(null);
+interface TeacherDashboardProps {
+  data: TeacherDashboardData;
+}
 
-  async function handleAnalyzeClass(classId: string) {
-    setLoadingClassId(classId);
-    setErrorClassId(null);
-    try {
-      const created = await api.post<AIRecommendation>(`/ai/class/${classId}/analyze`);
-      setClassHistory((current) => ({
-        ...current,
-        [classId]: [created, ...(current[classId] ?? [])],
-      }));
-    } catch {
-      setErrorClassId(classId);
-    } finally {
-      setLoadingClassId(null);
-    }
-  }
+export function TeacherDashboard({ data }: TeacherDashboardProps) {
+  const { classes, at_risk } = data;
 
   if (classes.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-6 text-sm text-slate-500">No classes assigned yet.</CardContent>
-      </Card>
+      <div className="space-y-4 p-6">
+        <Card>
+          <CardContent className="p-6 text-sm text-slate-500">No classes assigned.</CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {classes.map((cls) => (
-        <Card key={cls.id}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">{cls.name}</CardTitle>
-                <p className="text-sm text-slate-500">Grade {cls.grade_level}</p>
+    <div className="space-y-6 p-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {classes.map((cls) => (
+          <Card key={cls.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{cls.name}</CardTitle>
+              <p className="text-sm text-slate-500">Grade {cls.grade_level}</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-4 text-sm">
+                <span>
+                  <span className="font-medium">{cls.student_count}</span>{" "}
+                  <span className="text-slate-500">students</span>
+                </span>
+                <span>
+                  <span className="font-medium">
+                    {cls.avg_score !== null ? cls.avg_score.toFixed(1) : "—"}
+                  </span>{" "}
+                  <span className="text-slate-500">avg score</span>
+                </span>
               </div>
-              <AnalyzeButton
-                label="Analyze Class"
-                loading={loadingClassId === cls.id}
-                onClick={() => void handleAnalyzeClass(cls.id)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {errorClassId === cls.id && (
-              <p className="text-sm text-red-600">Failed to analyze class. Is Ollama running?</p>
-            )}
-            {classHistory[cls.id]?.[0] ? (
-              <AnalysisCard recommendation={classHistory[cls.id][0]} />
-            ) : (
-              <p className="text-sm text-slate-400">No recommendation yet. Click Analyze Class to generate one.</p>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              <TierDonut distribution={cls.tier_distribution} />
+              <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                <span>
+                  <span className="font-medium">{cls.tier_distribution.tier1}</span>{" "}
+                  <TierBadge tier="tier1" />
+                </span>
+                <span className="text-slate-300">·</span>
+                <span>
+                  <span className="font-medium">{cls.tier_distribution.tier2}</span>{" "}
+                  <TierBadge tier="tier2" />
+                </span>
+                <span className="text-slate-300">·</span>
+                <span>
+                  <span className="font-medium">{cls.tier_distribution.tier3}</span>{" "}
+                  <TierBadge tier="tier3" />
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {at_risk.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">At-Risk Students</h2>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Avg Score</TableHead>
+                    <TableHead>Tier</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {at_risk.map((student) => (
+                    <TableRow
+                      key={student.student_id}
+                      className={
+                        student.tier === "tier3"
+                          ? "bg-red-50"
+                          : student.tier === "tier2"
+                          ? "bg-yellow-50"
+                          : undefined
+                      }
+                    >
+                      <TableCell className="font-medium">
+                        <Link href={`/students/${student.student_id}`} className="hover:underline">
+                          {student.student_name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{student.class_name}</TableCell>
+                      <TableCell>{student.avg_score.toFixed(1)}</TableCell>
+                      <TableCell>
+                        <TierBadge tier={student.tier} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
