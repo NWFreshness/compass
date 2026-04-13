@@ -202,3 +202,17 @@ Assertions:
 - Benchmark-overridden tier thresholds on dashboards (benchmarks UI is Phase 3)
 - Separate `/alerts` page (alerts are inline on each dashboard)
 - District admin scoped to specific schools (all schools for now)
+
+---
+
+## Implementation Tasks
+
+- [ ] **Task 1: Dashboard schemas** — `app/schemas/dashboard.py`: Pydantic models for `TeacherDashboardResponse`, `PrincipalDashboardResponse`, `DistrictDashboardResponse`, and their nested types (`ClassSummary`, `AtRiskStudent`, `GradeAverage`, `SchoolSummary`)
+- [ ] **Task 2: Dashboard service and tests** — `app/services/dashboard.py`: `get_class_summary`, `get_at_risk_students`, `get_grade_averages`, `get_school_summary`; `app/tests/test_dashboard.py`: full suite covering aggregation correctness, scoping, and role enforcement
+- [ ] **Task 3: Dashboard routes** — `app/routes/dashboard.py`: three endpoints with `require_role`; update `app/main.py` to register router
+- [ ] **Task 4: Frontend types and sidebar** — extend `src/lib/types.ts` with dashboard interfaces; add "Dashboard" as first nav link in `src/components/layout/sidebar.tsx`
+- [ ] **Task 5: Shared dashboard components** — `src/components/dashboard/TierBadge.tsx` and `src/components/dashboard/TierDonut.tsx` (Recharts PieChart)
+- [ ] **Task 6: TeacherDashboard component** — `src/components/dashboard/TeacherDashboard.tsx`: class cards with TierDonut + at-risk table
+- [ ] **Task 7: PrincipalDashboard component** — `src/components/dashboard/PrincipalDashboard.tsx`: school summary, per-class table, grade averages, at-risk table
+- [ ] **Task 8: DistrictDashboard component** — `src/components/dashboard/DistrictDashboard.tsx`: per-school table with tier distribution and high-risk flags
+- [ ] **Task 9: Dashboard page** — `src/app/(protected)/dashboard/page.tsx`: role switch, API call, renders correct component
