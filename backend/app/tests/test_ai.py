@@ -2,8 +2,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 import pytest
-from sqlalchemy import text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from app.models import AIRec
@@ -155,9 +157,64 @@ def test_ai_recommendation_rejects_both_targets_populated(db):
             db.flush()
 
 
-def test_ai_migration_enforces_target_type_enum_constraint():
-    migration_path = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "ccb6db26e00c_initial_schema.py"
-    source = migration_path.read_text(encoding="utf-8")
+def test_ai_recommendation_rejects_missing_targets(db):
+    world = seed_ai_context(db)
+    rec = AIRec(
+        target_type=AITargetType.student,
+        student_id=None,
+        class_id=None,
+        created_by=world["teacher"].id,
+        model_name="llama3.2",
+        temperature=0.7,
+        prompt="prompt text",
+        response="raw response",
+        snapshot={},
+        parse_error=None,
+        created_at=datetime.now(timezone.utc),
+    )
 
-    assert "sa.Column('target_type', sa.Enum('student', 'class', name='aitargettype', native_enum=False, create_constraint=True), nullable=False)" in source
-    assert "create_constraint=True" in source
+    with db.begin_nested():
+        db.add(rec)
+        with pytest.raises(IntegrityError):
+            db.flush()
+
+
+def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
+    backend_root = Path(__file__).resolve().parents[2]
+    db_path = Path(r"C:\Users\tyler.mayfield\.codex\memories") / "phase3a_ai_migration.sqlite3"
+    database_url = f"sqlite:///{db_path.as_posix()}"
+
+    if db_path.exists():
+        db_path.unlink()
+
+    monkeypatch.setattr("app.config.settings.database_url", database_url)
+
+    config = Config()
+    config.set_main_option("script_location", str(backend_root / "alembic"))
+    config.set_main_option("sqlalchemy.url", database_url)
+
+    engine = None
+    try:
+        command.upgrade(config, "ccb6db26e00c")
+
+        engine = create_engine(database_url)
+        inspector = inspect(engine)
+        columns = {column["name"] for column in inspector.get_columns("ai_recs")}
+        check_constraints = inspector.get_check_constraints("ai_recs")
+
+        assert {"target_type", "student_id", "class_id", "created_by"} <= columns
+        assert any(
+            constraint["name"] == "ck_ai_recs_target_consistency"
+            for constraint in check_constraints
+        )
+        assert any(
+            "target_type" in constraint["sqltext"]
+            and "'student'" in constraint["sqltext"]
+            and "'class'" in constraint["sqltext"]
+            for constraint in check_constraints
+        )
+    finally:
+        if engine is not None:
+            engine.dispose()
+        if db_path.exists():
+            db_path.unlink()
