@@ -47,6 +47,28 @@ export interface Score {
   notes: string | null;
 }
 
+export interface AIAnalysisSnapshot {
+  overall_average: number;
+  recommended_tier: "tier1" | "tier2" | "tier3";
+  student?: { id: string; name: string; grade_level: number };
+  class?: { id: string; name: string; grade_level: number };
+  subjects: { subject_id: string; average: number; tier: "tier1" | "tier2" | "tier3" }[];
+  recent_scores: { date: string; value: number }[];
+}
+
+export interface AIRecommendation {
+  id: string;
+  target_type: "student" | "class";
+  student_id: string | null;
+  class_id: string | null;
+  model_name: string;
+  temperature: number;
+  response: string;
+  snapshot: AIAnalysisSnapshot;
+  parse_error: string | null;
+  created_at: string;
+}
+
 export interface CSVRowError {
   row: number;
   message: string;

@@ -4,19 +4,24 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { AnalysisCard } from "@/components/ai/AnalysisCard";
+import { AnalysisHistory } from "@/components/ai/AnalysisHistory";
+import { AnalyzeButton } from "@/components/ai/AnalyzeButton";
 import { Header } from "@/components/layout/header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/api";
-import type { Score, Student, Subject } from "@/lib/types";
+import type { AIRecommendation, Score, Student, Subject } from "@/lib/types";
 
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [history, setHistory] = useState<AIRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -24,14 +29,16 @@ export default function StudentDetailPage() {
       setLoading(true);
       setError("");
       try {
-        const [studentData, scoreData, subjectData] = await Promise.all([
+        const [studentData, scoreData, subjectData, aiHistory] = await Promise.all([
           api.get<Student>(`/students/${params.id}`),
           api.get<Score[]>(`/scores/student/${params.id}`),
           api.get<Subject[]>("/lookups/subjects"),
+          api.get<AIRecommendation[]>(`/ai/student/${params.id}/history`),
         ]);
         setStudent(studentData);
         setScores(scoreData);
         setSubjects(subjectData);
+        setHistory(aiHistory);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unable to load student profile");
       } finally {
@@ -41,6 +48,19 @@ export default function StudentDetailPage() {
 
     void load();
   }, [params.id]);
+
+  async function handleAnalyzeStudent() {
+    setAnalyzing(true);
+    setError("");
+    try {
+      const created = await api.post<AIRecommendation>(`/ai/student/${params.id}/analyze`);
+      setHistory((current) => [created, ...current]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to analyze student");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   const subjectNames = useMemo(
     () => Object.fromEntries(subjects.map((subject) => [subject.id, subject.name])),
@@ -79,6 +99,33 @@ export default function StudentDetailPage() {
                   <p className="text-xs uppercase tracking-wide text-slate-500">Scores Recorded</p>
                   <p className="mt-1 font-medium">{scores.length}</p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="space-y-4 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">AI Recommendation</p>
+                    <p className="text-sm text-slate-500">
+                      Generate benchmark-aware support guidance for this student.
+                    </p>
+                  </div>
+                  <AnalyzeButton
+                    label="Analyze Student"
+                    loading={analyzing}
+                    onClick={() => void handleAnalyzeStudent()}
+                  />
+                </div>
+                {history[0] ? <AnalysisCard recommendation={history[0]} /> : null}
+                {history.length > 1 && (
+                  <div>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                      History
+                    </p>
+                    <AnalysisHistory items={history.slice(1)} />
+                  </div>
+                )}
               </CardContent>
             </Card>
 
