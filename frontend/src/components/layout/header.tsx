@@ -4,21 +4,21 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function Header({ title }: { title?: string }) {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const stored = window.localStorage.getItem("theme");
+    return stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-      document.documentElement.classList.add("dark");
-      setDark(true);
-    }
-  }, []);
+    document.documentElement.classList.toggle("dark", dark);
+    window.localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
 
   function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
+    setDark((current) => !current);
   }
 
   return (
