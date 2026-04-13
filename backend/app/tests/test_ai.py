@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-import shutil
+import os
+import tempfile
 from pathlib import Path
 
 from alembic import command
@@ -181,9 +182,11 @@ def test_ai_recommendation_rejects_missing_targets(db):
 
 def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
     backend_root = Path(__file__).resolve().parents[2]
-    temp_dir = Path.home() / ".codex" / "memories" / f"phase3a_ai_migration_{uuid.uuid4().hex}"
-    temp_dir.mkdir()
-    db_path = temp_dir / "ai_migration.sqlite3"
+    temp_root = Path.home() / ".codex" / "memories"
+    temp_root.mkdir(parents=True, exist_ok=True)
+    temp_file = tempfile.NamedTemporaryFile(dir=str(temp_root), suffix=".sqlite3", delete=False)
+    temp_file.close()
+    db_path = Path(temp_file.name)
     database_url = f"sqlite:///{db_path.as_posix()}"
 
     monkeypatch.setattr("app.config.settings.database_url", database_url)
@@ -192,37 +195,39 @@ def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
     config.set_main_option("script_location", str(backend_root / "alembic"))
     config.set_main_option("sqlalchemy.url", database_url)
 
-    command.upgrade(config, "ccb6db26e00c")
-
     engine = create_engine(database_url)
     try:
-        inspector = inspect(engine)
-        columns = {column["name"] for column in inspector.get_columns("ai_recs")}
-        check_constraints = inspector.get_check_constraints("ai_recs")
+        with engine.connect() as connection:
+            command.upgrade(config, "ccb6db26e00c")
 
-        assert {
-            "target_type",
-            "student_id",
-            "class_id",
-            "created_by",
-            "model_name",
-            "temperature",
-            "prompt",
-            "response",
-            "snapshot",
-            "parse_error",
-            "created_at",
-        } <= columns
-        assert any(
-            constraint["name"] == "ck_ai_recs_target_consistency"
-            for constraint in check_constraints
-        )
-        assert any(
-            "target_type" in constraint["sqltext"]
-            and "'student'" in constraint["sqltext"]
-            and "'class'" in constraint["sqltext"]
-            for constraint in check_constraints
-        )
+            inspector = inspect(connection)
+            columns = {column["name"] for column in inspector.get_columns("ai_recs")}
+            check_constraints = inspector.get_check_constraints("ai_recs")
+
+            assert {
+                "target_type",
+                "student_id",
+                "class_id",
+                "created_by",
+                "model_name",
+                "temperature",
+                "prompt",
+                "response",
+                "snapshot",
+                "parse_error",
+                "created_at",
+            } <= columns
+            assert any(
+                constraint["name"] == "ck_ai_recs_target_consistency"
+                for constraint in check_constraints
+            )
+            assert any(
+                "target_type" in constraint["sqltext"]
+                and "'student'" in constraint["sqltext"]
+                and "'class'" in constraint["sqltext"]
+                for constraint in check_constraints
+            )
     finally:
         engine.dispose()
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        if db_path.exists():
+            os.unlink(db_path)
