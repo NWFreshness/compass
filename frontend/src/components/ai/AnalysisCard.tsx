@@ -7,6 +7,12 @@ const TIER_LABEL: Record<string, string> = {
   tier3: "Tier 3 (At Risk)",
 };
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")  // **bold** → bold
+    .replace(/^[*-]\s+/gm, "• ");      // * item / - item → • item
+}
+
 export function AnalysisCard({ recommendation }: { recommendation: AIRecommendation }) {
   return (
     <Card>
@@ -24,7 +30,7 @@ export function AnalysisCard({ recommendation }: { recommendation: AIRecommendat
         {recommendation.parse_error && (
           <p className="text-amber-600 text-xs">{recommendation.parse_error}</p>
         )}
-        <p className="whitespace-pre-wrap text-slate-700">{recommendation.response}</p>
+        <p className="whitespace-pre-wrap text-slate-700">{stripMarkdown(recommendation.response)}</p>
       </CardContent>
     </Card>
   );

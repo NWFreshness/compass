@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import AIRec, AITargetType, Class, Score, Student
+from app.models import AIRec, AITargetType, Class, Score, Student, Subject
 from app.services import ollama as ollama_client
 from app.services.mtss import calculate_tier, get_student_tier
 
@@ -15,30 +15,38 @@ from app.services.mtss import calculate_tier, get_student_tier
 
 def parse_ai_response(text: str) -> dict:
     """Extract structured fields from a free-text Ollama response."""
+    import re
+
     lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+    def _strip_md(line: str) -> str:
+        """Remove leading/trailing markdown bold markers (**) and header markers (#)."""
+        return re.sub(r"^\*+|^\#+|\*+$", "", line).strip()
 
     def _find(prefix: str) -> str | None:
         for line in lines:
-            if line.lower().startswith(prefix.lower()):
-                return line.split(":", 1)[1].strip()
+            cleaned = _strip_md(line)
+            if cleaned.lower().startswith(prefix.lower()):
+                return cleaned.split(":", 1)[1].strip().strip("*").strip()
         return None
 
     raw_tier = _find("Recommended MTSS Tier:")
     recommended_tier = None
     if raw_tier:
         recommended_tier = raw_tier.lower().replace(" ", "")
-        if recommended_tier in {"tier1", "tier2", "tier3"}:
-            pass
-        else:
-            # try to normalise "Tier 2" -> "tier2"
-            recommended_tier = recommended_tier.replace("tier", "tier")
+        if recommended_tier not in {"tier1", "tier2", "tier3"}:
+            recommended_tier = None
 
-    bullet_lines = [line[2:].strip() for line in lines if line.startswith("- ")]
+    bullet_lines = [
+        re.sub(r"^[-*]\s+", "", line).strip()
+        for line in lines
+        if re.match(r"^[-*]\s+", line)
+    ]
     curriculum = bullet_lines[:1]
     interventions = bullet_lines[1:2]
 
     rationale = next(
-        (line for line in lines if line.lower().startswith("average score")),
+        (line for line in lines if "average score" in line.lower()),
         "",
     )
 
@@ -71,11 +79,14 @@ def build_student_snapshot(db: Session, student_id: uuid.UUID) -> dict:
     subject_rows = []
     for subject_id in sorted({str(s.subject_id) for s in scores}):
         subject_id_uuid = uuid.UUID(subject_id)
+        subject = db.query(Subject).filter(Subject.id == subject_id_uuid).first()
+        subject_name = subject.name if subject else subject_id
         tier = get_student_tier(db, student_id, subject_id_uuid)
         subj_scores = [s for s in scores if s.subject_id == subject_id_uuid]
         avg = round(sum(s.value for s in subj_scores) / len(subj_scores), 1)
         subject_rows.append({
             "subject_id": subject_id,
+            "subject_name": subject_name,
             "average": avg,
             "tier": tier.value if tier else "tier1",
         })
@@ -144,7 +155,7 @@ def build_class_snapshot(db: Session, class_id: uuid.UUID) -> dict:
 def _build_student_prompt(snapshot: dict) -> str:
     s = snapshot["student"]
     subjects = "\n".join(
-        f"  - Subject {row['subject_id']}: avg {row['average']} ({row['tier']})"
+        f"  - {row['subject_name']}: avg {row['average']} ({row['tier']})"
         for row in snapshot["subjects"]
     )
     recent = ", ".join(str(r["value"]) for r in snapshot["recent_scores"])

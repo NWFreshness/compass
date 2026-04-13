@@ -98,7 +98,9 @@ export default function ClassesAdminPage() {
                 <Label>School</Label>
                 <Select value={form.school_id} onValueChange={(value) => setForm({ ...form, school_id: value ?? "" })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select school" />
+                    <SelectValue placeholder="Select school">
+                      {(value: string) => value ? (schools.find((s) => s.id === value)?.name ?? value) : "Select school"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {schools.map((school) => (
@@ -113,7 +115,9 @@ export default function ClassesAdminPage() {
                 <Label>Teacher</Label>
                 <Select value={form.teacher_id} onValueChange={(value) => setForm({ ...form, teacher_id: value ?? "" })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Optional teacher assignment" />
+                    <SelectValue placeholder="Optional teacher assignment">
+                      {(value: string) => value ? (teachers.find((t) => t.id === value)?.username ?? value) : "Optional teacher assignment"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {teachers.map((teacher) => (

@@ -151,7 +151,9 @@ export default function NewStudentPage() {
                     <Label>School</Label>
                     <Select value={form.school_id} onValueChange={(value) => setForm({ ...form, school_id: value ?? "" })}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select school" />
+                        <SelectValue placeholder="Select school">
+                          {(value: string) => value ? (schools.find((s) => s.id === value)?.name ?? value) : "Select school"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {schools.map((school) => (
@@ -167,7 +169,9 @@ export default function NewStudentPage() {
                   <Label>Class</Label>
                   <Select value={form.class_id} onValueChange={(value) => setForm({ ...form, class_id: value ?? "" })}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select class" />
+                      <SelectValue placeholder="Select class">
+                        {(value: string) => value ? (availableClasses.find((c) => c.id === value)?.name ?? value) : "Select class"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {availableClasses.map((klass) => (

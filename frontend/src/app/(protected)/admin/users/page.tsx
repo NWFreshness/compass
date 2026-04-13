@@ -118,7 +118,9 @@ export default function UsersAdminPage() {
                 <Label>School</Label>
                 <Select value={form.school_id} onValueChange={(value) => setForm({ ...form, school_id: value ?? "" })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Optional school assignment" />
+                    <SelectValue placeholder="Optional school assignment">
+                      {(value: string) => value ? (schools.find((s) => s.id === value)?.name ?? value) : "Optional school assignment"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {schools.map((school) => (

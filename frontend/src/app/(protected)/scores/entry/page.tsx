@@ -94,7 +94,9 @@ export default function ScoreEntryPage() {
                     <Label>Student</Label>
                     <Select value={form.student_id} onValueChange={(value) => setForm({ ...form, student_id: value ?? "" })}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select student" />
+                        <SelectValue placeholder="Select student">
+                          {(value: string) => value ? (students.find((s) => s.id === value)?.name ?? value) : "Select student"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {students.map((student) => (
@@ -109,7 +111,9 @@ export default function ScoreEntryPage() {
                     <Label>Subject</Label>
                     <Select value={form.subject_id} onValueChange={(value) => setForm({ ...form, subject_id: value ?? "" })}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select subject" />
+                        <SelectValue placeholder="Select subject">
+                          {(value: string) => value ? (subjects.find((s) => s.id === value)?.name ?? value) : "Select subject"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {subjects.map((subject) => (
