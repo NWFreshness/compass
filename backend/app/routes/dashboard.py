@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -39,9 +41,10 @@ def principal_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.principal, UserRole.it_admin, UserRole.district_admin)),
 ):
-    import uuid
     # Resolve school
     if current_user.role == UserRole.principal:
+        if school_id:
+            raise HTTPException(status_code=400, detail="school_id is not applicable for this role")
         resolved_school_id = current_user.school_id
     else:
         if not school_id:
