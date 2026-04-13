@@ -26,6 +26,17 @@ What is missing:
 - Enforce threshold validity consistently
 - Ensure dashboards and AI analysis use the configured thresholds
 
+## Approved Implementation Strategy
+
+Phase 3C will be executed as a backend-first benchmark CRUD slice followed by the admin UI and navigation integration.
+
+Key decisions:
+
+- benchmark threshold resolution remains centralized in backend services rather than being duplicated in the frontend
+- the frontend is limited to benchmark administration and visibility, not local tier calculation
+- dashboard and AI consumers continue to rely on backend-derived benchmark-aware results
+- scope remains limited to the four implementation tasks listed in this document
+
 ---
 
 ## Backend
