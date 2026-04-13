@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
+from app.routes.ai import router as ai_router
 from app.routes.auth import router as auth_router
 from app.routes.admin import router as admin_router
 from app.routes.lookups import router as lookups_router
@@ -14,6 +15,7 @@ app.include_router(admin_router)
 app.include_router(lookups_router)
 app.include_router(students_router)
 app.include_router(scores_router)
+app.include_router(ai_router)
 
 
 @app.exception_handler(IntegrityError)
