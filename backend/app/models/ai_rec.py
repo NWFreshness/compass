@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, JSON, String, Text, Uuid
+from sqlalchemy import CheckConstraint, DateTime, Enum, Float, ForeignKey, JSON, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -14,9 +14,25 @@ class AITargetType(str, enum.Enum):
 
 class AIRec(Base):
     __tablename__ = "ai_recs"
+    __table_args__ = (
+        CheckConstraint(
+            "(target_type = 'student' AND student_id IS NOT NULL AND class_id IS NULL) OR "
+            "(target_type = 'class' AND class_id IS NOT NULL AND student_id IS NULL)",
+            name="ck_ai_recs_target_consistency",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    target_type: Mapped[AITargetType] = mapped_column(Enum(AITargetType), nullable=False)
+    target_type: Mapped[AITargetType] = mapped_column(
+        Enum(
+            AITargetType,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="aitargettype",
+            native_enum=False,
+            create_constraint=True,
+        ),
+        nullable=False,
+    )
     student_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid, ForeignKey("students.id"), nullable=True)
     class_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid, ForeignKey("classes.id"), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
