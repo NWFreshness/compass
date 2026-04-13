@@ -1,16 +1,17 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import os
 import tempfile
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+import httpx
 import pytest
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.exc import IntegrityError
 
-from app.models import AIRec
+from app.models import AIRec, Benchmark, Score, ScoreType, Subject
 from app.models.ai_rec import AITargetType
 from app.models import Class, School, Student, User, UserRole
 from app.schemas.ai import AIRecommendationResponse
@@ -46,6 +47,70 @@ def seed_ai_context(db):
     db.flush()
 
     return {"school": school, "teacher": teacher, "class": cls, "student": student}
+
+
+def seed_ai_world(db):
+    world = seed_ai_context(db)
+
+    math = Subject(name=f"Math {uuid.uuid4()}")
+    reading = Subject(name=f"Reading {uuid.uuid4()}")
+    db.add_all([math, reading])
+    db.flush()
+
+    db.add_all(
+        [
+            Benchmark(
+                grade_level=world["student"].grade_level,
+                subject_id=math.id,
+                tier1_min=85.0,
+                tier2_min=75.0,
+            ),
+            Benchmark(
+                grade_level=world["student"].grade_level,
+                subject_id=reading.id,
+                tier1_min=90.0,
+                tier2_min=80.0,
+            ),
+        ]
+    )
+    db.flush()
+
+    db.add_all(
+        [
+            Score(
+                student_id=world["student"].id,
+                subject_id=math.id,
+                score_type=ScoreType.quiz,
+                value=74.0,
+                date=date(2026, 4, 10),
+            ),
+            Score(
+                student_id=world["student"].id,
+                subject_id=math.id,
+                score_type=ScoreType.test,
+                value=76.0,
+                date=date(2026, 4, 3),
+            ),
+            Score(
+                student_id=world["student"].id,
+                subject_id=reading.id,
+                score_type=ScoreType.quiz,
+                value=70.0,
+                date=date(2026, 4, 12),
+            ),
+            Score(
+                student_id=world["student"].id,
+                subject_id=reading.id,
+                score_type=ScoreType.homework,
+                value=70.0,
+                date=date(2026, 4, 1),
+            ),
+        ]
+    )
+    db.flush()
+
+    world["subjects"] = {"math": math, "reading": reading}
+    return world
 
 
 def test_ai_recommendation_response_serializes_class_target(db):
@@ -231,3 +296,102 @@ def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
         engine.dispose()
         if db_path.exists():
             os.unlink(db_path)
+
+
+def test_build_student_snapshot_uses_benchmark_aware_tiers(db):
+    from app.services.ai_analysis import build_student_snapshot
+
+    world = seed_ai_world(db)
+
+    snapshot = build_student_snapshot(db, world["student"].id)
+
+    assert snapshot["student"] == {
+        "id": str(world["student"].id),
+        "name": "Ada Lovelace",
+        "grade_level": 5,
+    }
+    assert snapshot["overall_average"] == 72.5
+    assert snapshot["recommended_tier"] == "tier2"
+    assert snapshot["subjects"] == [
+        {
+            "subject_id": str(world["subjects"]["math"].id),
+            "subject_name": world["subjects"]["math"].name,
+            "average": 75.0,
+            "tier": "tier2",
+        },
+        {
+            "subject_id": str(world["subjects"]["reading"].id),
+            "subject_name": world["subjects"]["reading"].name,
+            "average": 70.0,
+            "tier": "tier3",
+        },
+    ]
+    assert snapshot["recent_scores"] == [
+        {
+            "date": "2026-04-12",
+            "subject": world["subjects"]["reading"].name,
+            "score_type": "quiz",
+            "value": 70.0,
+        },
+        {
+            "date": "2026-04-10",
+            "subject": world["subjects"]["math"].name,
+            "score_type": "quiz",
+            "value": 74.0,
+        },
+        {
+            "date": "2026-04-03",
+            "subject": world["subjects"]["math"].name,
+            "score_type": "test",
+            "value": 76.0,
+        },
+    ]
+
+
+def test_parse_ai_response_extracts_structured_sections():
+    from app.services.ai_analysis import parse_ai_response
+
+    text = """Recommended MTSS Tier: Tier 2
+Curriculum Recommendations:
+- reteach fractions
+- spiral review warmups
+Intervention Strategies:
+- small group work
+- weekly progress monitoring
+Rationale:
+Average score is 72.5 with low quiz performance."""
+
+    parsed = parse_ai_response(text)
+
+    assert parsed == {
+        "recommended_tier": "tier2",
+        "curriculum_recommendations": [
+            "reteach fractions",
+            "spiral review warmups",
+        ],
+        "intervention_strategies": [
+            "small group work",
+            "weekly progress monitoring",
+        ],
+        "rationale": "Average score is 72.5 with low quiz performance.",
+    }
+
+
+def test_generate_text_raises_controlled_error_on_http_failure(monkeypatch):
+    from app.services.ollama import OllamaError, generate_text
+
+    def fake_post(*args, **kwargs):
+        raise httpx.HTTPStatusError(
+            "boom",
+            request=httpx.Request("POST", "http://testserver/api/generate"),
+            response=httpx.Response(500, request=httpx.Request("POST", "http://testserver/api/generate")),
+        )
+
+    monkeypatch.setattr("app.config.settings.ollama_url", "http://testserver")
+    monkeypatch.setattr("app.config.settings.ollama_model", "llama3.2")
+    monkeypatch.setattr("app.config.settings.ollama_temperature", 0.2)
+    monkeypatch.setattr("app.config.settings.ollama_timeout_seconds", 12.5)
+    monkeypatch.setattr("app.services.ollama.httpx.post", fake_post)
+
+    with pytest.raises(OllamaError, match="Ollama request failed"):
+        generate_text("Build a support plan.")

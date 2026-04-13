@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     ollama_temperature: float = 0.7
+    ollama_timeout_seconds: float = 30.0
 
 
 settings = Settings()
