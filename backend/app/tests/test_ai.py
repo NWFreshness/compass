@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime, timezone
+import shutil
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 import pytest
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.exc import IntegrityError
 
 from app.models import AIRec
@@ -128,8 +129,7 @@ def test_ai_recommendation_persists_class_target_value(db):
     db.commit()
 
     raw_target_type = db.execute(
-        text("select target_type from ai_recs where id = :id"),
-        {"id": rec.id.hex},
+        select(AIRec.target_type).where(AIRec.id == rec.id)
     ).scalar_one()
 
     assert raw_target_type == "class"
@@ -181,11 +181,10 @@ def test_ai_recommendation_rejects_missing_targets(db):
 
 def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
     backend_root = Path(__file__).resolve().parents[2]
-    db_path = Path(r"C:\Users\tyler.mayfield\.codex\memories") / "phase3a_ai_migration.sqlite3"
+    temp_dir = Path.home() / ".codex" / "memories" / f"phase3a_ai_migration_{uuid.uuid4().hex}"
+    temp_dir.mkdir()
+    db_path = temp_dir / "ai_migration.sqlite3"
     database_url = f"sqlite:///{db_path.as_posix()}"
-
-    if db_path.exists():
-        db_path.unlink()
 
     monkeypatch.setattr("app.config.settings.database_url", database_url)
 
@@ -193,16 +192,27 @@ def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
     config.set_main_option("script_location", str(backend_root / "alembic"))
     config.set_main_option("sqlalchemy.url", database_url)
 
-    engine = None
-    try:
-        command.upgrade(config, "ccb6db26e00c")
+    command.upgrade(config, "ccb6db26e00c")
 
-        engine = create_engine(database_url)
+    engine = create_engine(database_url)
+    try:
         inspector = inspect(engine)
         columns = {column["name"] for column in inspector.get_columns("ai_recs")}
         check_constraints = inspector.get_check_constraints("ai_recs")
 
-        assert {"target_type", "student_id", "class_id", "created_by"} <= columns
+        assert {
+            "target_type",
+            "student_id",
+            "class_id",
+            "created_by",
+            "model_name",
+            "temperature",
+            "prompt",
+            "response",
+            "snapshot",
+            "parse_error",
+            "created_at",
+        } <= columns
         assert any(
             constraint["name"] == "ck_ai_recs_target_consistency"
             for constraint in check_constraints
@@ -214,7 +224,5 @@ def test_ai_migration_enforces_target_type_enum_constraint(monkeypatch):
             for constraint in check_constraints
         )
     finally:
-        if engine is not None:
-            engine.dispose()
-        if db_path.exists():
-            db_path.unlink()
+        engine.dispose()
+        shutil.rmtree(temp_dir, ignore_errors=True)
