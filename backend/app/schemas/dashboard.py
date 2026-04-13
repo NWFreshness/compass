@@ -46,6 +46,8 @@ class TeacherDashboardResponse(BaseModel):
     classes: list[ClassSummary]
     at_risk: list[AtRiskStudent]
 
+    model_config = {"from_attributes": True}
+
 
 class PrincipalDashboardResponse(BaseModel):
     school_name: str
@@ -55,8 +57,12 @@ class PrincipalDashboardResponse(BaseModel):
     grade_averages: list[GradeAverage]
     at_risk: list[AtRiskStudent]
 
+    model_config = {"from_attributes": True}
+
 
 class DistrictDashboardResponse(BaseModel):
     total_students: int
     tier_distribution: dict[str, int]
     schools: list[SchoolSummary]
+
+    model_config = {"from_attributes": True}
