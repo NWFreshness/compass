@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models import AIRec
 from app.models.ai_rec import AITargetType
-from app.models import Class, School, User, UserRole
+from app.models import Class, School, Student, User, UserRole
 from app.schemas.ai import AIRecommendationResponse
 from app.services.auth import hash_password
 
@@ -30,7 +30,17 @@ def seed_ai_context(db):
     db.add(cls)
     db.flush()
 
-    return {"school": school, "teacher": teacher, "class": cls}
+    student = Student(
+        name="Ada Lovelace",
+        student_id_number="S001",
+        grade_level=5,
+        school_id=school.id,
+        class_id=cls.id,
+    )
+    db.add(student)
+    db.flush()
+
+    return {"school": school, "teacher": teacher, "class": cls, "student": student}
 
 
 def test_ai_recommendation_response_serializes_class_target(db):
@@ -59,6 +69,35 @@ def test_ai_recommendation_response_serializes_class_target(db):
     assert payload.target_type == "class"
     assert payload.class_id == world["class"].id
     assert payload.snapshot["recommended_tier"] == "tier2"
+    assert payload.model_name == "llama3.2"
+
+
+def test_ai_recommendation_response_serializes_student_target(db):
+    world = seed_ai_context(db)
+    rec = AIRec(
+        id=uuid.uuid4(),
+        target_type=AITargetType.student,
+        student_id=world["student"].id,
+        class_id=None,
+        created_by=world["teacher"].id,
+        model_name="llama3.2",
+        temperature=0.7,
+        prompt="prompt text",
+        response="raw response",
+        snapshot={
+            "student": {"id": str(world["student"].id), "name": "Ada Lovelace"},
+            "overall_average": 72.5,
+            "recommended_tier": "tier2",
+        },
+        parse_error=None,
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = AIRecommendationResponse.model_validate(rec)
+
+    assert payload.target_type == "student"
+    assert payload.student_id == world["student"].id
+    assert payload.model_name == "llama3.2"
 
 
 def test_ai_recommendation_persists_class_target_value(db):
@@ -95,7 +134,7 @@ def test_ai_recommendation_rejects_both_targets_populated(db):
     world = seed_ai_context(db)
     rec = AIRec(
         target_type=AITargetType.student,
-        student_id=uuid.uuid4(),
+        student_id=world["student"].id,
         class_id=world["class"].id,
         created_by=world["teacher"].id,
         model_name="llama3.2",
