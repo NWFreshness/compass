@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart2, Upload, Settings, LogOut, School, LayoutDashboard } from "lucide-react";
+import { Users, BarChart2, Upload, Settings, LogOut, School, LayoutDashboard, SlidersHorizontal } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { href: "/admin/schools", label: "Schools", icon: School, roles: ["it_admin"] },
   { href: "/admin/classes", label: "Classes", icon: School, roles: ["it_admin"] },
   { href: "/admin/subjects", label: "Subjects", icon: BarChart2, roles: ["it_admin"] },
+  { href: "/admin/benchmarks", label: "Benchmarks", icon: SlidersHorizontal, roles: ["it_admin", "district_admin"] },
 ];
 
 export function Sidebar() {
