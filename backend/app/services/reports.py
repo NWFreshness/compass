@@ -345,7 +345,7 @@ def _pdf_table_row(pdf: FPDF, values: list[tuple[str, int]]) -> None:
 
 
 def to_pdf_student(data: StudentReportData) -> bytes:
-    pdf = _base_pdf(f"Student Report — {data.student_name}")
+    pdf = _base_pdf(f"Student Report - {data.student_name}")
     _pdf_row(pdf, "Student ID", data.student_id_number)
     _pdf_row(pdf, "Grade", str(data.grade_level))
     _pdf_row(pdf, "Class", data.class_name or "Unassigned")
@@ -371,7 +371,7 @@ def to_pdf_student(data: StudentReportData) -> bytes:
 
 
 def to_pdf_class(data: ClassReportData) -> bytes:
-    pdf = _base_pdf(f"Class Report — {data.class_name}")
+    pdf = _base_pdf(f"Class Report - {data.class_name}")
     _pdf_row(pdf, "Grade", str(data.grade_level))
     _pdf_row(pdf, "School", data.school_name)
     _pdf_row(pdf, "Students", str(data.student_count))
@@ -392,7 +392,7 @@ def to_pdf_class(data: ClassReportData) -> bytes:
 
 
 def to_pdf_school(data: SchoolReportData) -> bytes:
-    pdf = _base_pdf(f"School Report — {data.school_name}")
+    pdf = _base_pdf(f"School Report - {data.school_name}")
     _pdf_row(pdf, "Total Students", str(data.total_students))
     _pdf_row(pdf, "At-Risk Students", str(data.at_risk_count))
     pdf.ln(4)

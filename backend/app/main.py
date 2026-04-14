@@ -10,6 +10,7 @@ from app.routes.students import router as students_router
 from app.routes.scores import router as scores_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.benchmarks import router as benchmarks_router
+from app.routes.reports import router as reports_router
 
 app = FastAPI(title="Compass API")
 
@@ -21,6 +22,7 @@ app.include_router(students_router)
 app.include_router(scores_router)
 app.include_router(dashboard_router)
 app.include_router(benchmarks_router)
+app.include_router(reports_router)
 app.include_router(ai_router)
 
 
