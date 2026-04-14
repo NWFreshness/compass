@@ -7,11 +7,13 @@ import { useEffect, useMemo, useState } from "react";
 import { AnalysisCard } from "@/components/ai/AnalysisCard";
 import { AnalysisHistory } from "@/components/ai/AnalysisHistory";
 import { AnalyzeButton } from "@/components/ai/AnalyzeButton";
+import { TierBadge } from "@/components/dashboard/TierBadge";
 import { InterventionForm } from "@/components/interventions/InterventionForm";
 import { InterventionList } from "@/components/interventions/InterventionList";
 import { Header } from "@/components/layout/header";
+import { SubjectBar } from "@/components/students/SubjectBar";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -19,11 +21,15 @@ import type { AIRecommendation, Intervention, Score, Student, Subject } from "@/
 
 function sortInterventions(items: Intervention[]) {
   return [...items].sort((a, b) => {
-    if (a.status !== b.status) {
-      return a.status.localeCompare(b.status);
-    }
+    if (a.status !== b.status) return a.status.localeCompare(b.status);
     return b.start_date.localeCompare(a.start_date);
   });
+}
+
+function scoreCellClass(value: number): string {
+  if (value >= 80) return "font-semibold text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-300";
+  if (value >= 70) return "font-semibold text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-300";
+  return "font-semibold text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-300";
 }
 
 export default function StudentDetailPage() {
@@ -62,7 +68,6 @@ export default function StudentDetailPage() {
         setLoading(false);
       }
     }
-
     void load();
   }, [params.id]);
 
@@ -86,20 +91,13 @@ export default function StudentDetailPage() {
 
   function handleInterventionUpdated(updated: Intervention) {
     setInterventions((current) =>
-      sortInterventions(current.map((intervention) => (intervention.id === updated.id ? updated : intervention)))
+      sortInterventions(current.map((i) => (i.id === updated.id ? updated : i)))
     );
   }
 
-  const subjectNames = useMemo(
-    () => Object.fromEntries(subjects.map((subject) => [subject.id, subject.name])),
-    [subjects]
-  );
-
   async function handleExport(fmt: "csv" | "pdf") {
     try {
-      const res = await fetch(`/api/reports/student/${params.id}?format=${fmt}`, {
-        credentials: "include",
-      });
+      const res = await fetch(`/api/reports/student/${params.id}?format=${fmt}`, { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -115,6 +113,34 @@ export default function StudentDetailPage() {
     }
   }
 
+  const subjectNames = useMemo(
+    () => Object.fromEntries(subjects.map((s) => [s.id, s.name])),
+    [subjects]
+  );
+
+  const subjectAverages = useMemo(() => {
+    const grouped: Record<string, number[]> = {};
+    for (const score of scores) {
+      if (!grouped[score.subject_id]) grouped[score.subject_id] = [];
+      grouped[score.subject_id].push(score.value);
+    }
+    return Object.entries(grouped)
+      .map(([subjectId, values]) => ({
+        subjectId,
+        name: subjectNames[subjectId] ?? subjectId,
+        average: values.reduce((a, b) => a + b, 0) / values.length,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [scores, subjectNames]);
+
+  const overallTier = useMemo(() => {
+    if (scores.length === 0) return null;
+    const avg = scores.reduce((a, b) => a + b.value, 0) / scores.length;
+    if (avg >= 80) return "tier1" as const;
+    if (avg >= 70) return "tier2" as const;
+    return "tier3" as const;
+  }, [scores]);
+
   return (
     <div>
       <Header title={student ? student.name : "Student Profile"} />
@@ -125,18 +151,10 @@ export default function StudentDetailPage() {
           </Link>
           {student && (
             <div className="flex gap-1">
-              <button
-                type="button"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-                onClick={() => void handleExport("csv")}
-              >
+              <button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => void handleExport("csv")}>
                 Export CSV
               </button>
-              <button
-                type="button"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-                onClick={() => void handleExport("pdf")}
-              >
+              <button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => void handleExport("pdf")}>
                 Export PDF
               </button>
             </div>
@@ -144,9 +162,11 @@ export default function StudentDetailPage() {
         </div>
 
         {loading ? (
-          <Card>
-            <CardContent className="p-6 text-sm text-slate-500">Loading student profile...</CardContent>
-          </Card>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            ))}
+          </div>
         ) : error ? (
           <Card>
             <CardContent className="p-6 text-sm text-red-600">{error}</CardContent>
@@ -154,7 +174,7 @@ export default function StudentDetailPage() {
         ) : student ? (
           <>
             <Card>
-              <CardContent className="grid gap-4 p-6 sm:grid-cols-3">
+              <CardContent className="grid gap-4 p-6 sm:grid-cols-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-slate-500">Student ID</p>
                   <p className="mt-1 font-medium">{student.student_id_number}</p>
@@ -167,30 +187,39 @@ export default function StudentDetailPage() {
                   <p className="text-xs uppercase tracking-wide text-slate-500">Scores Recorded</p>
                   <p className="mt-1 font-medium">{scores.length}</p>
                 </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">MTSS Tier</p>
+                  <div className="mt-1">{overallTier ? <TierBadge tier={overallTier} /> : <span className="text-slate-400 text-sm">No scores</span>}</div>
+                </div>
               </CardContent>
             </Card>
+
+            {subjectAverages.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Subject Performance</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 p-6 pt-0">
+                  {subjectAverages.map((s) => (
+                    <SubjectBar key={s.subjectId} subjectName={s.name} average={s.average} />
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardContent className="space-y-4 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">AI Recommendation</p>
-                    <p className="text-sm text-slate-500">
-                      Generate benchmark-aware support guidance for this student.
-                    </p>
+                    <p className="text-sm text-slate-500">Generate benchmark-aware support guidance for this student.</p>
                   </div>
-                  <AnalyzeButton
-                    label="Analyze Student"
-                    loading={analyzing}
-                    onClick={() => void handleAnalyzeStudent()}
-                  />
+                  <AnalyzeButton label="Analyze Student" loading={analyzing} onClick={() => void handleAnalyzeStudent()} />
                 </div>
                 {history[0] ? <AnalysisCard recommendation={history[0]} /> : null}
                 {history.length > 1 && (
                   <div>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                      History
-                    </p>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">History</p>
                     <AnalysisHistory items={history.slice(1)} />
                   </div>
                 )}
@@ -198,6 +227,9 @@ export default function StudentDetailPage() {
             </Card>
 
             <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Score History</CardTitle>
+              </CardHeader>
               <CardContent className="p-0">
                 {scores.length === 0 ? (
                   <div className="p-6 text-sm text-slate-500">No scores recorded for this student yet.</div>
@@ -215,11 +247,11 @@ export default function StudentDetailPage() {
                     <TableBody>
                       {scores.map((score) => (
                         <TableRow key={score.id}>
-                          <TableCell>{score.date}</TableCell>
-                          <TableCell>{subjectNames[score.subject_id] ?? score.subject_id}</TableCell>
-                          <TableCell className="capitalize">{score.score_type}</TableCell>
-                          <TableCell>{score.value}%</TableCell>
-                          <TableCell>{score.notes || "—"}</TableCell>
+                          <TableCell className="text-sm">{score.date}</TableCell>
+                          <TableCell className="text-sm">{subjectNames[score.subject_id] ?? score.subject_id}</TableCell>
+                          <TableCell className="capitalize text-sm">{score.score_type}</TableCell>
+                          <TableCell className={`rounded-md px-2 py-1 text-sm ${scoreCellClass(score.value)}`}>{score.value}%</TableCell>
+                          <TableCell className="text-sm text-slate-500">{score.notes || "\u2014"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -233,9 +265,7 @@ export default function StudentDetailPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium">Interventions</p>
-                    <p className="text-sm text-slate-500">
-                      Track active supports and resolution notes for this student.
-                    </p>
+                    <p className="text-sm text-slate-500">Track active supports and resolution notes for this student.</p>
                   </div>
                   {!authLoading && user ? (
                     <button
@@ -247,23 +277,13 @@ export default function StudentDetailPage() {
                     </button>
                   ) : null}
                 </div>
-
                 {showInterventionForm && user ? (
                   <div className="rounded-lg border border-slate-200 p-4">
-                    <InterventionForm
-                      target={{ type: "student", id: params.id }}
-                      onCreated={handleInterventionCreated}
-                      onCancel={() => setShowInterventionForm(false)}
-                    />
+                    <InterventionForm target={{ type: "student", id: params.id }} onCreated={handleInterventionCreated} onCancel={() => setShowInterventionForm(false)} />
                   </div>
                 ) : null}
-
                 {user ? (
-                  <InterventionList
-                    interventions={interventions}
-                    userRole={user.role}
-                    onUpdated={handleInterventionUpdated}
-                  />
+                  <InterventionList interventions={interventions} userRole={user.role} onUpdated={handleInterventionUpdated} />
                 ) : (
                   <p className="text-sm text-slate-500">Loading intervention permissions...</p>
                 )}

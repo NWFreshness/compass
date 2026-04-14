@@ -76,7 +76,15 @@ export default function DashboardPage() {
 
   function renderDashboard() {
     if (authLoading || loading) {
-      return <div className="p-6 text-sm text-slate-500">Loading dashboard...</div>;
+      return (
+        <div className="space-y-4 p-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            ))}
+          </div>
+        </div>
+      );
     }
     if (error) {
       return <div className="p-6 text-sm text-red-600">{error}</div>;
