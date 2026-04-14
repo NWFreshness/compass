@@ -160,3 +160,19 @@ export interface DistrictDashboard {
   tier_distribution: { tier1: number; tier2: number; tier3: number };
   schools: SchoolSummary[];
 }
+
+export interface AuditLogEntry {
+  id: string;
+  user_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  detail: string | null;
+  school_id: string | null;
+  timestamp: string;
+}
+
+export interface AuditLogPage {
+  total: number;
+  entries: AuditLogEntry[];
+}
