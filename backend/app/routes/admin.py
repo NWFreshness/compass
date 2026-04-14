@@ -8,6 +8,7 @@ from app.schemas.admin import (
     ClassCreate, ClassResponse, SchoolCreate, SchoolResponse,
     SubjectCreate, SubjectResponse, UserCreate, UserResponse, UserUpdate,
 )
+from app.services.audit import log_action
 from app.services.auth import hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -19,8 +20,8 @@ def list_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
 
-@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED, dependencies=[admin_only])
-def create_user(body: UserCreate, db: Session = Depends(get_db)):
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(body: UserCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role(UserRole.it_admin))):
     if db.query(User).filter(User.username == body.username).first():
         raise HTTPException(status_code=409, detail="Username already exists")
     user = User(
@@ -32,6 +33,8 @@ def create_user(body: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+    log_action(db, user_id=current_user.id, action="user.create", entity_type="user", entity_id=str(user.id))
+    db.commit()
     return user
 
 
@@ -53,14 +56,16 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, db: Session = Depends(get_
     return user
 
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[admin_only])
-def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_role(UserRole.it_admin))):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     # Null out teacher assignment on any classes this user teaches
     db.query(Class).filter(Class.teacher_id == user_id).update({"teacher_id": None})
     db.delete(user)
+    db.commit()
+    log_action(db, user_id=current_user.id, action="user.delete", entity_type="user", entity_id=str(user_id))
     db.commit()
 
 

@@ -6,6 +6,7 @@ from app.db import get_db
 from app.middleware.auth import get_current_user
 from app.models import Class, Intervention, InterventionStatus, Student, User, UserRole
 from app.schemas.intervention import InterventionCreate, InterventionResponse, InterventionUpdate
+from app.services.audit import log_action
 
 router = APIRouter(prefix="/api/interventions", tags=["interventions"])
 
@@ -95,6 +96,8 @@ def create_intervention(
     db.add(intervention)
     db.commit()
     db.refresh(intervention)
+    log_action(db, user_id=current_user.id, action="intervention.create", entity_type="intervention", entity_id=str(intervention.id), school_id=current_user.school_id)
+    db.commit()
     return intervention
 
 
@@ -113,4 +116,6 @@ def update_intervention(
         setattr(intervention, field, val)
     db.commit()
     db.refresh(intervention)
+    log_action(db, user_id=current_user.id, action="intervention.update", entity_type="intervention", entity_id=str(intervention.id), school_id=current_user.school_id)
+    db.commit()
     return intervention

@@ -4,6 +4,7 @@ from app.db import get_db
 from app.middleware.auth import get_current_user
 from app.models import User
 from app.schemas.auth import LoginRequest, UserResponse
+from app.services.audit import log_action
 from app.services.auth import create_session, delete_session, verify_password
 from app.config import settings
 
@@ -23,6 +24,8 @@ def login(body: LoginRequest, response: Response, db: Session = Depends(get_db))
         samesite="lax",
         secure=settings.cookie_secure,
     )
+    log_action(db, user_id=user.id, action="login", entity_type="user", entity_id=str(user.id), school_id=user.school_id)
+    db.commit()
     return user
 
 
@@ -30,6 +33,8 @@ def login(body: LoginRequest, response: Response, db: Session = Depends(get_db))
 def logout(response: Response, session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if session_id:
         delete_session(db, session_id)
+        log_action(db, user_id=None, action="logout", entity_type="session", entity_id=session_id)
+        db.commit()
     response.delete_cookie(
         key="session_id",
         httponly=True,

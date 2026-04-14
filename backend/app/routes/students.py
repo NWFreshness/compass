@@ -5,6 +5,7 @@ from app.db import get_db
 from app.middleware.auth import get_current_user, require_role
 from app.models import Student, User, UserRole, Class
 from app.schemas.student import StudentCreate, StudentResponse, StudentUpdate
+from app.services.audit import log_action
 
 router = APIRouter(prefix="/api/students", tags=["students"])
 
@@ -68,6 +69,8 @@ def create_student(
     db.add(student)
     db.commit()
     db.refresh(student)
+    log_action(db, user_id=current_user.id, action="student.create", entity_type="student", entity_id=str(student.id), school_id=student.school_id)
+    db.commit()
     return student
 
 
@@ -85,4 +88,6 @@ def update_student(
         setattr(student, field, val)
     db.commit()
     db.refresh(student)
+    log_action(db, user_id=current_user.id, action="student.update", entity_type="student", entity_id=str(student.id), school_id=student.school_id)
+    db.commit()
     return student
