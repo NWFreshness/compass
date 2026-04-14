@@ -95,13 +95,53 @@ export default function StudentDetailPage() {
     [subjects]
   );
 
+  async function handleExport(fmt: "csv" | "pdf") {
+    try {
+      const res = await fetch(`/api/reports/student/${params.id}?format=${fmt}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `student_report.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Export failed");
+    }
+  }
+
   return (
     <div>
       <Header title={student ? student.name : "Student Profile"} />
       <div className="space-y-4 p-6">
-        <Link href="/students" className={buttonVariants({ variant: "outline" })}>
-          Back to Students
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/students" className={buttonVariants({ variant: "outline" })}>
+            Back to Students
+          </Link>
+          {student && (
+            <div className="flex gap-1">
+              <button
+                type="button"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+                onClick={() => void handleExport("csv")}
+              >
+                Export CSV
+              </button>
+              <button
+                type="button"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+                onClick={() => void handleExport("pdf")}
+              >
+                Export PDF
+              </button>
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <Card>
