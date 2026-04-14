@@ -15,4 +15,5 @@ class AuditLog(Base):
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     detail: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    school_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
