@@ -50,9 +50,6 @@ export default function ReportsPage() {
         setStudents(s);
         setClasses(c);
         setSchools(sc);
-        if (s[0]) setSelectedStudent(s[0].id);
-        if (c[0]) setSelectedClass(c[0].id);
-        if (sc[0]) setSelectedSchool(sc[0].id);
       } catch {}
     }
     void load();
@@ -121,7 +118,11 @@ export default function ReportsPage() {
               <div className="space-y-1">
                 <label className="text-sm font-medium">Student</label>
                 <Select value={selectedStudent} onValueChange={(v) => { if (v) setSelectedStudent(v); }}>
-                  <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
+                  <SelectTrigger>
+                    <span className={!selectedStudent ? "text-muted-foreground" : ""}>
+                      {selectedStudent ? (students.find((s) => s.id === selectedStudent)?.name ?? "Select student") : "Select student"}
+                    </span>
+                  </SelectTrigger>
                   <SelectContent>
                     {students.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name} ({s.student_id_number})</SelectItem>
@@ -135,7 +136,11 @@ export default function ReportsPage() {
               <div className="space-y-1">
                 <label className="text-sm font-medium">Class</label>
                 <Select value={selectedClass} onValueChange={(v) => { if (v) setSelectedClass(v); }}>
-                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectTrigger>
+                    <span className={!selectedClass ? "text-muted-foreground" : ""}>
+                      {selectedClass ? (classes.find((c) => c.id === selectedClass)?.name ?? "Select class") : "Select class"}
+                    </span>
+                  </SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name} (Grade {c.grade_level})</SelectItem>
@@ -149,7 +154,11 @@ export default function ReportsPage() {
               <div className="space-y-1">
                 <label className="text-sm font-medium">School</label>
                 <Select value={selectedSchool} onValueChange={(v) => { if (v) setSelectedSchool(v); }}>
-                  <SelectTrigger><SelectValue placeholder="Select school" /></SelectTrigger>
+                  <SelectTrigger>
+                    <span className={!selectedSchool ? "text-muted-foreground" : ""}>
+                      {selectedSchool ? (schools.find((s) => s.id === selectedSchool)?.name ?? "Select school") : "Select school"}
+                    </span>
+                  </SelectTrigger>
                   <SelectContent>
                     {schools.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
