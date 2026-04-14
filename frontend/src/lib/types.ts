@@ -26,6 +26,21 @@ export interface Subject {
   name: string;
 }
 
+export interface Benchmark {
+  id: string;
+  grade_level: number;
+  subject_id: string;
+  tier1_min: number;
+  tier2_min: number;
+}
+
+export interface BenchmarkFormValues {
+  grade_level: string;
+  subject_id: string;
+  tier1_min: string;
+  tier2_min: string;
+}
+
 export interface Student {
   id: string;
   name: string;

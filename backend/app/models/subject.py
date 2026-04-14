@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Float, ForeignKey, Integer, String, Uuid
+from sqlalchemy import CheckConstraint, Float, ForeignKey, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -16,6 +16,12 @@ class Subject(Base):
 
 class Benchmark(Base):
     __tablename__ = "benchmarks"
+    __table_args__ = (
+        UniqueConstraint("grade_level", "subject_id", name="uq_benchmarks_grade_level_subject_id"),
+        CheckConstraint("tier1_min >= tier2_min", name="ck_benchmarks_tier1_min_gte_tier2_min"),
+        CheckConstraint("tier1_min >= 0 AND tier1_min <= 100", name="ck_benchmarks_tier1_min_range"),
+        CheckConstraint("tier2_min >= 0 AND tier2_min <= 100", name="ck_benchmarks_tier2_min_range"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     grade_level: Mapped[int] = mapped_column(Integer, nullable=False)

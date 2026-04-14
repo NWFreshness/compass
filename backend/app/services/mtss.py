@@ -2,6 +2,9 @@ import enum
 from sqlalchemy.orm import Session
 from app.models import Score, Benchmark, Student
 
+DEFAULT_TIER1_MIN = 80.0
+DEFAULT_TIER2_MIN = 70.0
+
 
 class TierResult(str, enum.Enum):
     tier1 = "tier1"
@@ -17,6 +20,25 @@ def calculate_tier(avg_score: float, tier1_min: float = 80.0, tier2_min: float =
     return TierResult.tier3
 
 
+def get_benchmark_thresholds(
+    db: Session,
+    *,
+    grade_level: int | None,
+    subject_id,
+) -> tuple[float, float]:
+    if grade_level is None or subject_id is None:
+        return DEFAULT_TIER1_MIN, DEFAULT_TIER2_MIN
+
+    benchmark = (
+        db.query(Benchmark)
+        .filter(Benchmark.grade_level == grade_level, Benchmark.subject_id == subject_id)
+        .first()
+    )
+    if not benchmark:
+        return DEFAULT_TIER1_MIN, DEFAULT_TIER2_MIN
+    return benchmark.tier1_min, benchmark.tier2_min
+
+
 def get_student_tier(db: Session, student_id, subject_id=None) -> TierResult | None:
     """Compute MTSS tier for a student, optionally filtered by subject."""
     query = db.query(Score).filter(Score.student_id == student_id)
@@ -28,13 +50,9 @@ def get_student_tier(db: Session, student_id, subject_id=None) -> TierResult | N
     avg = sum(s.value for s in scores) / len(scores)
 
     student = db.query(Student).filter(Student.id == student_id).first()
-    benchmark = None
-    if student and subject_id is not None:
-        benchmark = (
-            db.query(Benchmark)
-            .filter(Benchmark.grade_level == student.grade_level, Benchmark.subject_id == subject_id)
-            .first()
-        )
-    tier1_min = benchmark.tier1_min if benchmark else 80.0
-    tier2_min = benchmark.tier2_min if benchmark else 70.0
+    tier1_min, tier2_min = get_benchmark_thresholds(
+        db,
+        grade_level=student.grade_level if student else None,
+        subject_id=subject_id,
+    )
     return calculate_tier(avg, tier1_min, tier2_min)
