@@ -162,7 +162,8 @@ def test_invalid_threshold_order_is_rejected_by_database_constraint():
         engine.dispose()
 
 
-def test_list_benchmarks_supports_grade_and_subject_filters(client, db):
+@pytest.mark.parametrize("username", ["it_admin", "district_admin"])
+def test_list_benchmarks_supports_grade_and_subject_filters(username, client, db):
     world = seed_benchmark_world(db)
     db.add_all(
         [
@@ -173,7 +174,7 @@ def test_list_benchmarks_supports_grade_and_subject_filters(client, db):
     )
     db.commit()
 
-    login(client, "principal")
+    login(client, username)
     response = client.get(f"/api/benchmarks?grade_level=4&subject_id={world['subject'].id}")
 
     assert response.status_code == 200
@@ -181,6 +182,16 @@ def test_list_benchmarks_supports_grade_and_subject_filters(client, db):
     assert len(payload) == 1
     assert payload[0]["grade_level"] == 4
     assert payload[0]["subject_id"] == str(world["subject"].id)
+
+
+@pytest.mark.parametrize("username", ["principal", "teacher"])
+def test_non_admin_roles_cannot_list_benchmarks(username, client, db):
+    seed_benchmark_world(db)
+
+    login(client, username)
+    response = client.get("/api/benchmarks")
+
+    assert response.status_code == 403
 
 
 @pytest.mark.parametrize("username", ["it_admin", "district_admin"])

@@ -11,6 +11,7 @@ from app.schemas.benchmark import BenchmarkCreate, BenchmarkResponse, BenchmarkU
 
 router = APIRouter(prefix="/api/benchmarks", tags=["benchmarks"])
 benchmark_write_access = Depends(require_role(UserRole.it_admin, UserRole.district_admin))
+benchmark_read_access = Depends(require_role(UserRole.it_admin, UserRole.district_admin))
 
 
 @router.get("", response_model=list[BenchmarkResponse])
@@ -18,7 +19,7 @@ def list_benchmarks(
     grade_level: int | None = None,
     subject_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = benchmark_read_access,
 ):
     query = db.query(Benchmark)
     if grade_level is not None:

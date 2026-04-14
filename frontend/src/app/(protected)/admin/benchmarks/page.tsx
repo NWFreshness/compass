@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { BenchmarkForm, type BenchmarkSubmitPayload } from "@/components/admin/BenchmarkForm";
 import { BenchmarkTable } from "@/components/admin/BenchmarkTable";
@@ -38,7 +39,8 @@ function toFormValues(benchmark?: Benchmark): BenchmarkFormValues {
 }
 
 export default function BenchmarksAdminPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const canManage = user?.role === "it_admin" || user?.role === "district_admin";
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -122,6 +124,20 @@ export default function BenchmarksAdminPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!canManage) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, canManage, router]);
+
+  if (authLoading || !canManage) {
+    return null;
+  }
 
   async function handleCreate(payload: BenchmarkSubmitPayload) {
     setSubmitError("");
