@@ -1,7 +1,10 @@
 import uuid
 from typing import Optional
+
 from pydantic import BaseModel, Field
-from app.models import UserRole
+
+from app.models.user import UserRole
+from app.schemas.shared import UserResponse
 
 
 class UserCreate(BaseModel):
@@ -16,14 +19,6 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(default=None, min_length=8)
     role: Optional[UserRole] = None
     school_id: Optional[uuid.UUID] = None
-
-
-class UserResponse(BaseModel):
-    id: uuid.UUID
-    username: str
-    role: UserRole
-    school_id: Optional[uuid.UUID]
-    model_config = {"from_attributes": True}
 
 
 class SchoolCreate(BaseModel):

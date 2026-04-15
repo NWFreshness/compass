@@ -1,34 +1,36 @@
 import csv
 import io
+import uuid
 from collections import defaultdict
 from typing import Optional
 
 from fpdf import FPDF
 from sqlalchemy.orm import Session
 
-from app.models import AIRec, AITargetType, Class, Intervention, School, Score, Student, Subject
+from app.models.ai_rec import AIRec, AITargetType
+from app.models.class_ import Class
+from app.models.intervention import Intervention
+from app.models.school import School
+from app.models.score import Score
+from app.models.student import Student
+from app.models.subject import Subject
 from app.schemas.reports import (
     ClassReportData, ClassStudentRow, ClassSummaryRow,
-    DistrictReportData, SchoolReportData, SchoolSummaryRow,
+    DistrictReportData, GradeAverageRow, SchoolReportData, SchoolSummaryRow,
     StudentReportData, SubjectAverage,
 )
 from app.services.mtss import calculate_tier
-
-
-# ---------------------------------------------------------------------------
-# Data assembly
-# ---------------------------------------------------------------------------
 
 def build_student_report_data(db: Session, student: Student) -> StudentReportData:
     scores = db.query(Score).filter(Score.student_id == student.id).all()
     subject_ids = {s.subject_id for s in scores}
     subjects = {sub.id: sub.name for sub in db.query(Subject).filter(Subject.id.in_(subject_ids)).all()}
 
-    by_subject: dict = defaultdict(list)
+    by_subject: dict[uuid.UUID, list[float]] = defaultdict(list)
     for score in scores:
         by_subject[score.subject_id].append(score.value)
 
-    subject_averages = []
+    subject_averages: list[SubjectAverage] = []
     for subject_id, values in by_subject.items():
         avg = sum(values) / len(values)
         tier = calculate_tier(avg)
@@ -72,12 +74,12 @@ def build_class_report_data(db: Session, cls: Class) -> ClassReportData:
     students = db.query(Student).filter(Student.class_id == cls.id).all()
     student_ids = [s.id for s in students]
 
-    scores_map: dict = defaultdict(list)
+    scores_map: dict[uuid.UUID, list[float]] = defaultdict(list)
     for row in db.query(Score).filter(Score.student_id.in_(student_ids)).all():
         scores_map[row.student_id].append(row.value)
 
     tier_counts = {"tier1": 0, "tier2": 0, "tier3": 0}
-    rows = []
+    rows: list[ClassStudentRow] = []
     for student in sorted(students, key=lambda s: s.name):
         vals = scores_map.get(student.id, [])
         if vals:
@@ -107,12 +109,12 @@ def build_school_report_data(db: Session, school: School) -> SchoolReportData:
     class_ids = [c.id for c in classes]
     students = db.query(Student).filter(Student.class_id.in_(class_ids)).all() if class_ids else []
 
-    scores_map: dict = defaultdict(list)
+    scores_map: dict[uuid.UUID, list[float]] = defaultdict(list)
     if students:
         for row in db.query(Score).filter(Score.student_id.in_([s.id for s in students])).all():
             scores_map[row.student_id].append(row.value)
 
-    class_summaries = []
+    class_summaries: list[ClassSummaryRow] = []
     for cls in sorted(classes, key=lambda c: (c.grade_level, c.name)):
         cls_students = [s for s in students if s.class_id == cls.id]
         tier_counts = {"tier1": 0, "tier2": 0, "tier3": 0}
@@ -131,14 +133,14 @@ def build_school_report_data(db: Session, school: School) -> SchoolReportData:
             tier_distribution=tier_counts,
         ))
 
-    grade_avgs: dict = defaultdict(list)
+    grade_avgs: dict[int, list[float]] = defaultdict(list)
     for s in students:
         vals = scores_map.get(s.id, [])
         if vals:
             grade_avgs[s.grade_level].append(sum(vals) / len(vals))
 
     grade_averages = [
-        {"grade_level": g, "avg_score": round(sum(v) / len(v), 1), "student_count": len(v)}
+        GradeAverageRow(grade_level=g, avg_score=round(sum(v) / len(v), 1), student_count=len(v))
         for g, v in sorted(grade_avgs.items())
     ]
 
@@ -162,7 +164,7 @@ def build_district_report_data(db: Session) -> DistrictReportData:
     schools = db.query(School).all()
     total_students = 0
     all_tier_counts = {"tier1": 0, "tier2": 0, "tier3": 0}
-    school_rows = []
+    school_rows: list[SchoolSummaryRow] = []
 
     for school in schools:
         summary = _school_summary_fast(db, school)
@@ -212,11 +214,6 @@ def _school_summary_fast(db: Session, school: School) -> dict:
         "tier_distribution": tier_counts,
         "high_risk": (tier_counts["tier3"] / total > 0.30) if total > 0 else False,
     }
-
-
-# ---------------------------------------------------------------------------
-# CSV renderers
-# ---------------------------------------------------------------------------
 
 def to_csv_student(data: StudentReportData) -> str:
     buf = io.StringIO()
@@ -283,7 +280,7 @@ def to_csv_school(data: SchoolReportData) -> str:
         w.writerow(["Grade Averages"])
         w.writerow(["Grade", "Avg Score", "Students"])
         for g in data.grade_averages:
-            w.writerow([g["grade_level"], g["avg_score"], g["student_count"]])
+            w.writerow([g.grade_level, g.avg_score, g.student_count])
     return buf.getvalue()
 
 
@@ -307,11 +304,6 @@ def to_csv_district(data: DistrictReportData) -> str:
             "Yes" if school.high_risk else "No",
         ])
     return buf.getvalue()
-
-
-# ---------------------------------------------------------------------------
-# PDF renderers
-# ---------------------------------------------------------------------------
 
 def _base_pdf(title: str) -> FPDF:
     pdf = FPDF()
@@ -415,9 +407,9 @@ def to_pdf_school(data: SchoolReportData) -> bytes:
         _pdf_table_header(pdf, [("Grade", 40), ("Avg Score", 50), ("Students", 50)])
         for g in data.grade_averages:
             _pdf_table_row(pdf, [
-                (str(g["grade_level"]), 40),
-                (str(g["avg_score"]), 50),
-                (str(g["student_count"]), 50),
+                (str(g.grade_level), 40),
+                (str(g.avg_score), 50),
+                (str(g.student_count), 50),
             ])
     return bytes(pdf.output())
 

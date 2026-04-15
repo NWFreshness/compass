@@ -50,7 +50,9 @@ export default function ReportsPage() {
         setStudents(s);
         setClasses(c);
         setSchools(sc);
-      } catch {}
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Unable to load report filters");
+      }
     }
     void load();
   }, []);

@@ -1,10 +1,10 @@
 import pytest
-from app.services.auth import hash_password
-from app.models import User, UserRole, School, Class, Student, Subject, Score, ScoreType
-from app.services.dashboard import get_class_summary, get_at_risk_students, get_grade_averages, get_school_summary
 from datetime import date
 
-# Helper: create a student with a known average score
+from app.models import User, UserRole, School, Class, Student, Subject, Score, ScoreType
+from app.services.auth import hash_password
+from app.services.dashboard import get_class_summary, get_at_risk_students, get_grade_averages, get_school_summary
+
 def make_student_with_scores(db, name, sid, grade, school_id, class_id, subject_id, scores):
     student = Student(name=name, student_id_number=sid, grade_level=grade, school_id=school_id, class_id=class_id)
     db.add(student)
@@ -36,11 +36,8 @@ def test_class_summary_empty(db):
 
 def test_class_summary_with_scores(db):
     school, subject, teacher, cls = seed_base(db)
-    # tier1 student: avg 90
     make_student_with_scores(db, "Alice", "S001", 3, school.id, cls.id, subject.id, [90, 90])
-    # tier2 student: avg 75
     make_student_with_scores(db, "Bob", "S002", 3, school.id, cls.id, subject.id, [75, 75])
-    # tier3 student: avg 60
     make_student_with_scores(db, "Carol", "S003", 3, school.id, cls.id, subject.id, [60, 60])
     db.commit()
 
@@ -86,7 +83,6 @@ def test_grade_averages(db):
 
 def test_school_summary_high_risk(db):
     school, subject, teacher, cls = seed_base(db)
-    # 1 tier1, 2 tier3 → tier3 is 66% → high_risk
     make_student_with_scores(db, "Alice", "S001", 3, school.id, cls.id, subject.id, [90])
     make_student_with_scores(db, "Bob", "S002", 3, school.id, cls.id, subject.id, [60])
     make_student_with_scores(db, "Carol", "S003", 3, school.id, cls.id, subject.id, [60])
@@ -97,7 +93,6 @@ def test_school_summary_high_risk(db):
 
 def test_school_summary_not_high_risk(db):
     school, subject, teacher, cls = seed_base(db)
-    # 3 tier1, 1 tier3 → tier3 is 25% → not high_risk
     for i in range(3):
         make_student_with_scores(db, f"S{i}", f"ID{i}", 3, school.id, cls.id, subject.id, [90])
     make_student_with_scores(db, "Carol", "S003", 3, school.id, cls.id, subject.id, [60])
@@ -110,18 +105,13 @@ def test_school_summary_not_high_risk(db):
 def test_school_summary_avg_score_weighted(db):
     """avg_score must be per-student mean, not average-of-class-averages."""
     school, subject, teacher, cls = seed_base(db)
-    # second class with 1 student
     cls2 = Class(name="Grade 3B", grade_level=3, school_id=school.id, teacher_id=teacher.id)
     db.add(cls2)
     db.flush()
-    # cls: 2 students averaging 90 and 60 → per-student avgs [90, 60]
     make_student_with_scores(db, "Alice", "S001", 3, school.id, cls.id, subject.id, [90])
     make_student_with_scores(db, "Bob", "S002", 3, school.id, cls.id, subject.id, [60])
-    # cls2: 1 student averaging 90
     make_student_with_scores(db, "Carol", "S003", 3, school.id, cls2.id, subject.id, [90])
     db.commit()
-    # true per-student avg: (90 + 60 + 90) / 3 = 80.0
-    # wrong average-of-averages: (75 + 90) / 2 = 82.5
     summary = get_school_summary(db, school.id)
     assert summary["avg_score"] == pytest.approx(80.0, abs=0.1)
 

@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
-
+import { AtRiskStudentsTable } from "@/components/dashboard/AtRiskStudentsTable";
 import { ClassInterventionPanel } from "@/components/interventions/ClassInterventionPanel";
 import { TierBadge } from "@/components/dashboard/TierBadge";
 import { TierDonut } from "@/components/dashboard/TierDonut";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { TeacherDashboard as TeacherDashboardData } from "@/lib/types";
 
 interface TeacherDashboardProps {
@@ -79,45 +77,7 @@ export function TeacherDashboard({ data }: TeacherDashboardProps) {
       {at_risk.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">At-Risk Students</h2>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Avg Score</TableHead>
-                    <TableHead>Tier</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {at_risk.map((student) => (
-                    <TableRow
-                      key={student.student_id}
-                      className={
-                        student.tier === "tier3"
-                          ? "bg-red-50"
-                          : student.tier === "tier2"
-                          ? "bg-yellow-50"
-                          : undefined
-                      }
-                    >
-                      <TableCell className="font-medium">
-                        <Link href={`/students/${student.student_id}`} className="hover:underline">
-                          {student.student_name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{student.class_name}</TableCell>
-                      <TableCell>{student.avg_score.toFixed(1)}</TableCell>
-                      <TableCell>
-                        <TierBadge tier={student.tier} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <AtRiskStudentsTable students={at_risk} />
         </div>
       )}
     </div>

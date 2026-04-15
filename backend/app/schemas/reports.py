@@ -42,11 +42,17 @@ class ClassSummaryRow(BaseModel):
     tier_distribution: dict[str, int]
 
 
+class GradeAverageRow(BaseModel):
+    grade_level: int
+    avg_score: float
+    student_count: int
+
+
 class SchoolReportData(BaseModel):
     school_name: str
     total_students: int
     classes: list[ClassSummaryRow]
-    grade_averages: list[dict]
+    grade_averages: list[GradeAverageRow]
     at_risk_count: int
 
 

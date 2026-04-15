@@ -16,6 +16,11 @@ type DashboardConfig = {
   render: (data: DashboardData) => React.ReactNode;
 };
 
+const districtDashboardConfig: DashboardConfig = {
+  endpoint: "/dashboard/district",
+  render: (data) => <DistrictDashboard data={data as DistrictDashboardData} />,
+};
+
 const DASHBOARD_CONFIG: Record<string, DashboardConfig> = {
   teacher: {
     endpoint: "/dashboard/teacher",
@@ -25,14 +30,8 @@ const DASHBOARD_CONFIG: Record<string, DashboardConfig> = {
     endpoint: "/dashboard/principal",
     render: (data) => <PrincipalDashboard data={data as PrincipalDashboardData} />,
   },
-  district_admin: {
-    endpoint: "/dashboard/district",
-    render: (data) => <DistrictDashboard data={data as DistrictDashboardData} />,
-  },
-  it_admin: {
-    endpoint: "/dashboard/district",
-    render: (data) => <DistrictDashboard data={data as DistrictDashboardData} />,
-  },
+  district_admin: districtDashboardConfig,
+  it_admin: districtDashboardConfig,
 };
 
 export default function DashboardPage() {
