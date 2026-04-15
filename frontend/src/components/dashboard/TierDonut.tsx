@@ -3,9 +3,9 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const TIER_COLORS = {
-  tier1: "#22c55e",
-  tier2: "#eab308",
-  tier3: "#ef4444",
+  tier1: "#34c97a",
+  tier2: "#d99a30",
+  tier3: "#d84a4a",
 };
 
 const TIER_LABELS = {
@@ -24,7 +24,11 @@ export function TierDonut({ distribution }: TierDonutProps) {
     .map((t) => ({ name: TIER_LABELS[t], value: distribution[t], color: TIER_COLORS[t] }));
 
   if (data.length === 0) {
-    return <div className="flex h-32 items-center justify-center text-sm text-slate-400">No data</div>;
+    return (
+      <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
+        No data
+      </div>
+    );
   }
 
   const total = data.reduce((s, d) => s + d.value, 0);
@@ -36,8 +40,9 @@ export function TierDonut({ distribution }: TierDonutProps) {
           data={data}
           cx="50%"
           cy="50%"
-          innerRadius={35}
-          outerRadius={55}
+          innerRadius={36}
+          outerRadius={54}
+          strokeWidth={0}
           dataKey="value"
         >
           {data.map((entry) => (
@@ -45,12 +50,25 @@ export function TierDonut({ distribution }: TierDonutProps) {
           ))}
         </Pie>
         <Tooltip
+          contentStyle={{
+            background: "oklch(0.115 0.04 248)",
+            border: "1px solid oklch(0.20 0.05 246)",
+            borderRadius: "6px",
+            color: "oklch(0.87 0.025 215)",
+            fontSize: "12px",
+          }}
           formatter={(value, name) => {
             const num = typeof value === "number" ? value : 0;
             return [`${num} (${Math.round((num / total) * 100)}%)`, name];
           }}
         />
-        <Legend iconType="circle" iconSize={8} />
+        <Legend
+          iconType="circle"
+          iconSize={7}
+          formatter={(value) => (
+            <span style={{ fontSize: "11px", color: "oklch(0.60 0.04 225)" }}>{value}</span>
+          )}
+        />
       </PieChart>
     </ResponsiveContainer>
   );
