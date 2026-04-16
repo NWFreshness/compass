@@ -120,3 +120,21 @@ def test_analyze_class_stream_yields_tokens_then_done():
     assert results[-1].startswith("\n__DONE__:")
     db.add.assert_called_once()
     db.commit.assert_called_once()
+
+
+from app.services.ollama import OllamaError
+
+
+def test_analyze_student_stream_yields_error_on_ollama_failure():
+    db, student = _make_db_with_student()
+
+    def _failing_gen():
+        yield "partial"
+        raise OllamaError("connection lost")
+
+    with patch("app.services.ai_analysis.ollama_client.generate_stream", return_value=_failing_gen()):
+        results = list(analyze_student_stream(db, student_id=student.id, created_by=uuid.uuid4()))
+
+    assert results[0] == "partial"
+    assert results[-1].startswith("\n__ERROR__:")
+    db.add.assert_not_called()

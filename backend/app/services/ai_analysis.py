@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import AIRec, AITargetType, Class, Score, Student, Subject
 from app.services import ollama as ollama_client
+from app.services.ollama import OllamaError
 from app.services.mtss import calculate_tier, get_student_tier
 
 
@@ -260,9 +261,13 @@ def analyze_student_stream(
     snapshot = build_student_snapshot(db, student_id)
     prompt = _build_student_prompt(snapshot)
     full_response = ""
-    for token in ollama_client.generate_stream(prompt):
-        full_response += token
-        yield token
+    try:
+        for token in ollama_client.generate_stream(prompt):
+            full_response += token
+            yield token
+    except OllamaError as exc:
+        yield f"\n__ERROR__:{exc}"
+        return
 
     parsed = parse_ai_response(full_response)
     parse_error = None if parsed.get("recommended_tier") else "Could not parse structured response"
@@ -292,9 +297,13 @@ def analyze_class_stream(
     snapshot = build_class_snapshot(db, class_id)
     prompt = _build_class_prompt(snapshot)
     full_response = ""
-    for token in ollama_client.generate_stream(prompt):
-        full_response += token
-        yield token
+    try:
+        for token in ollama_client.generate_stream(prompt):
+            full_response += token
+            yield token
+    except OllamaError as exc:
+        yield f"\n__ERROR__:{exc}"
+        return
 
     parsed = parse_ai_response(full_response)
     parse_error = None if parsed.get("recommended_tier") else "Could not parse structured response"
