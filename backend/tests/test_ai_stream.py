@@ -7,10 +7,10 @@ from app.services.ollama import OllamaError, generate_stream
 
 
 def _make_lines(*tokens: str) -> list[bytes]:
-    lines = []
-    for i, token in enumerate(tokens):
-        is_done = i == len(tokens) - 1
-        lines.append(json.dumps({"response": token, "done": is_done}).encode())
+    """Simulate Ollama streaming: each token chunk has done=False, followed by a
+    final empty-response chunk with done=True (matching actual Ollama wire format)."""
+    lines = [json.dumps({"response": token, "done": False}).encode() for token in tokens]
+    lines.append(json.dumps({"response": "", "done": True}).encode())
     return lines
 
 

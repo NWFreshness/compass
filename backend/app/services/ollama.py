@@ -51,8 +51,8 @@ def generate_stream(prompt: str) -> Iterator[str]:
                 if not line:
                     continue
                 data = json.loads(line)
-                yield data["response"]
                 if data.get("done"):
                     break
+                yield data["response"]
     except httpx.HTTPError as exc:
         raise OllamaError("Ollama request failed") from exc
