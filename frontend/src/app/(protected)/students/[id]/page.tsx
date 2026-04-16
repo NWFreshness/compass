@@ -86,6 +86,7 @@ export default function StudentDetailPage() {
           setHistory(updated);
           setStreamingText("");
         } catch {
+          setStreamingText("");
           setError("Analysis saved but failed to refresh history");
         }
       },
@@ -229,13 +230,17 @@ export default function StudentDetailPage() {
                   </div>
                   <AnalyzeButton label="Analyze Student" loading={isStreaming} onClick={() => void handleAnalyzeStudent()} />
                 </div>
-                {isStreaming && streamingText ? (
+                {isStreaming ? (
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">Analyzing...</CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm">
-                      <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{streamingText}</p>
+                      {streamingText ? (
+                        <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{streamingText}</p>
+                      ) : (
+                        <p className="text-slate-400 text-sm">Waiting for response...</p>
+                      )}
                     </CardContent>
                   </Card>
                 ) : history[0] ? (
