@@ -60,7 +60,7 @@ def test_generate_stream_error_raised_on_iteration_not_construction():
 
 
 import uuid
-from app.services.ai_analysis import analyze_student_stream
+from app.services.ai_analysis import analyze_student_stream, analyze_class_stream
 
 
 def _make_db_with_student():
@@ -86,6 +86,35 @@ def test_analyze_student_stream_yields_tokens_then_done():
 
     with patch("app.services.ai_analysis.ollama_client.generate_stream", return_value=iter(tokens)):
         results = list(analyze_student_stream(db, student_id=student.id, created_by=uuid.uuid4()))
+
+    assert results[:-1] == tokens
+    assert results[-1].startswith("\n__DONE__:")
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
+
+
+def _make_db_with_class():
+    cls = MagicMock()
+    cls.id = uuid.uuid4()
+    cls.name = "Test Class"
+    cls.grade_level = 5
+
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = cls
+    db.query.return_value.filter.return_value.all.return_value = []
+
+    rec = MagicMock()
+    rec.id = uuid.uuid4()
+    db.refresh = lambda r: setattr(r, "id", rec.id)
+    return db, cls
+
+
+def test_analyze_class_stream_yields_tokens_then_done():
+    db, cls = _make_db_with_class()
+    tokens = ["Class", " analysis"]
+
+    with patch("app.services.ai_analysis.ollama_client.generate_stream", return_value=iter(tokens)):
+        results = list(analyze_class_stream(db, class_id=cls.id, created_by=uuid.uuid4()))
 
     assert results[:-1] == tokens
     assert results[-1].startswith("\n__DONE__:")
