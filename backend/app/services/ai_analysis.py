@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Iterator
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -250,6 +251,70 @@ def analyze_class(db: Session, *, class_id: uuid.UUID, created_by: uuid.UUID) ->
     db.commit()
     db.refresh(rec)
     return rec
+
+
+def analyze_student_stream(
+    db: Session, *, student_id: uuid.UUID, created_by: uuid.UUID
+) -> Iterator[str]:
+    """Yield Ollama tokens for a student analysis, then save AIRec and yield done sentinel."""
+    snapshot = build_student_snapshot(db, student_id)
+    prompt = _build_student_prompt(snapshot)
+    full_response = ""
+    for token in ollama_client.generate_stream(prompt):
+        full_response += token
+        yield token
+
+    parsed = parse_ai_response(full_response)
+    parse_error = None if parsed.get("recommended_tier") else "Could not parse structured response"
+    rec = AIRec(
+        target_type=AITargetType.student,
+        student_id=student_id,
+        class_id=None,
+        created_by=created_by,
+        model_name=settings.ollama_model,
+        temperature=settings.ollama_temperature,
+        prompt=prompt,
+        response=full_response,
+        snapshot=snapshot,
+        parse_error=parse_error,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    yield f"\n__DONE__:{rec.id}"
+
+
+def analyze_class_stream(
+    db: Session, *, class_id: uuid.UUID, created_by: uuid.UUID
+) -> Iterator[str]:
+    """Yield Ollama tokens for a class analysis, then save AIRec and yield done sentinel."""
+    snapshot = build_class_snapshot(db, class_id)
+    prompt = _build_class_prompt(snapshot)
+    full_response = ""
+    for token in ollama_client.generate_stream(prompt):
+        full_response += token
+        yield token
+
+    parsed = parse_ai_response(full_response)
+    parse_error = None if parsed.get("recommended_tier") else "Could not parse structured response"
+    rec = AIRec(
+        target_type=AITargetType.class_,
+        student_id=None,
+        class_id=class_id,
+        created_by=created_by,
+        model_name=settings.ollama_model,
+        temperature=settings.ollama_temperature,
+        prompt=prompt,
+        response=full_response,
+        snapshot=snapshot,
+        parse_error=parse_error,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    yield f"\n__DONE__:{rec.id}"
 
 
 def list_student_history(db: Session, student_id: uuid.UUID) -> list[AIRec]:
