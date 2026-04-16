@@ -41,7 +41,8 @@ export default function StudentDetailPage() {
   const [history, setHistory] = useState<AIRecommendation[]>([]);
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState("");
   const [showInterventionForm, setShowInterventionForm] = useState(false);
 
@@ -72,16 +73,28 @@ export default function StudentDetailPage() {
   }, [params.id]);
 
   async function handleAnalyzeStudent() {
-    setAnalyzing(true);
+    setIsStreaming(true);
+    setStreamingText("");
     setError("");
-    try {
-      const created = await api.post<AIRecommendation>(`/ai/student/${params.id}/analyze`);
-      setHistory((current) => [created, ...current]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unable to analyze student");
-    } finally {
-      setAnalyzing(false);
-    }
+    await api.postStream(
+      `/ai/student/${params.id}/analyze/stream`,
+      (token) => setStreamingText((prev) => prev + token),
+      async (_recId) => {
+        setIsStreaming(false);
+        try {
+          const updated = await api.get<AIRecommendation[]>(`/ai/student/${params.id}/history`);
+          setHistory(updated);
+          setStreamingText("");
+        } catch {
+          setError("Analysis saved but failed to refresh history");
+        }
+      },
+      (msg) => {
+        setIsStreaming(false);
+        setStreamingText("");
+        setError(msg || "Analysis failed");
+      },
+    );
   }
 
   function handleInterventionCreated(intervention: Intervention) {
@@ -214,9 +227,20 @@ export default function StudentDetailPage() {
                     <p className="text-sm font-medium">AI Recommendation</p>
                     <p className="text-sm text-slate-500">Generate benchmark-aware support guidance for this student.</p>
                   </div>
-                  <AnalyzeButton label="Analyze Student" loading={analyzing} onClick={() => void handleAnalyzeStudent()} />
+                  <AnalyzeButton label="Analyze Student" loading={isStreaming} onClick={() => void handleAnalyzeStudent()} />
                 </div>
-                {history[0] ? <AnalysisCard recommendation={history[0]} /> : null}
+                {isStreaming && streamingText ? (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Analyzing...</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm">
+                      <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{streamingText}</p>
+                    </CardContent>
+                  </Card>
+                ) : history[0] ? (
+                  <AnalysisCard recommendation={history[0]} />
+                ) : null}
                 {history.length > 1 && (
                   <div>
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">History</p>
