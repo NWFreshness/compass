@@ -35,6 +35,7 @@ async function postStream(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let settled = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -47,13 +48,19 @@ async function postStream(
       const payload: unknown = JSON.parse(line.slice(6));
       if (typeof payload !== "string") continue;
       if (payload.startsWith("\n__DONE__:")) {
+        settled = true;
         onDone(payload.slice("\n__DONE__:".length));
       } else if (payload.startsWith("\n__ERROR__:")) {
+        settled = true;
         onError(payload.slice("\n__ERROR__:".length));
       } else {
         onToken(payload);
       }
     }
+  }
+
+  if (!settled) {
+    onError("Stream ended unexpectedly");
   }
 }
 
