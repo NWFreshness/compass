@@ -1,6 +1,9 @@
+import json
 import uuid
+from collections.abc import Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -9,7 +12,9 @@ from app.models import Class, Student, User, UserRole
 from app.schemas.ai import AIRecommendationResponse
 from app.services.ai_analysis import (
     analyze_class,
+    analyze_class_stream,
     analyze_student,
+    analyze_student_stream,
     list_class_history,
     list_student_history,
 )
@@ -90,3 +95,34 @@ def class_history_route(
 ):
     _require_class_scope(db, current_user, class_id)
     return list_class_history(db, class_id)
+
+
+def _sse_stream(gen: Iterator[str]):
+    """Wrap a token generator as SSE, encoding each payload as JSON."""
+    try:
+        for token in gen:
+            yield f"data: {json.dumps(token)}\n\n"
+    except Exception as exc:
+        yield f"data: {json.dumps({'__error__': str(exc)})}\n\n"
+
+
+@router.post("/student/{student_id}/analyze/stream")
+def analyze_student_stream_route(
+    student_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_student_scope(db, current_user, student_id)
+    gen = analyze_student_stream(db, student_id=student_id, created_by=current_user.id)
+    return StreamingResponse(_sse_stream(gen), media_type="text/event-stream")
+
+
+@router.post("/class/{class_id}/analyze/stream")
+def analyze_class_stream_route(
+    class_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_class_scope(db, current_user, class_id)
+    gen = analyze_class_stream(db, class_id=class_id, created_by=current_user.id)
+    return StreamingResponse(_sse_stream(gen), media_type="text/event-stream")
