@@ -103,7 +103,7 @@ def _sse_stream(gen: Iterator[str]):
         for token in gen:
             yield f"data: {json.dumps(token)}\n\n"
     except Exception as exc:
-        yield f"data: {json.dumps({'__error__': str(exc)})}\n\n"
+        yield f"data: {json.dumps(f'\\n__ERROR__:{exc}')}\n\n"
 
 
 @router.post("/student/{student_id}/analyze/stream")
